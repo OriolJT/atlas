@@ -62,8 +62,9 @@ public class WorkflowExecutionService {
             return existing.get();
         }
 
-        // Validate definition exists and is PUBLISHED
-        WorkflowDefinition definition = definitionRepository.findById(request.definitionId())
+        // Validate definition exists and is PUBLISHED (tenant-scoped lookup)
+        WorkflowDefinition definition = definitionRepository
+                .findByDefinitionIdAndTenantId(request.definitionId(), tenantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Workflow definition not found: " + request.definitionId()));
 

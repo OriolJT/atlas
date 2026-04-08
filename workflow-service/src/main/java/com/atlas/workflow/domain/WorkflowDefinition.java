@@ -6,7 +6,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.ParamDef;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
@@ -15,6 +18,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "workflow_definitions")
+@FilterDef(name = "tenantFilter", parameters = @ParamDef(name = "tenantId", type = UUID.class))
+@Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public class WorkflowDefinition {
 
     @Id

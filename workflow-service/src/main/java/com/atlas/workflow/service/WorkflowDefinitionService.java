@@ -40,15 +40,15 @@ public class WorkflowDefinitionService {
     }
 
     @Transactional(readOnly = true)
-    public WorkflowDefinition getById(UUID definitionId) {
-        return repository.findById(definitionId)
+    public WorkflowDefinition getById(UUID tenantId, UUID definitionId) {
+        return repository.findByDefinitionIdAndTenantId(definitionId, tenantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Workflow definition not found: " + definitionId));
     }
 
     @Transactional
-    public WorkflowDefinition publish(UUID definitionId) {
-        WorkflowDefinition definition = repository.findById(definitionId)
+    public WorkflowDefinition publish(UUID tenantId, UUID definitionId) {
+        WorkflowDefinition definition = repository.findByDefinitionIdAndTenantId(definitionId, tenantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Workflow definition not found: " + definitionId));
 

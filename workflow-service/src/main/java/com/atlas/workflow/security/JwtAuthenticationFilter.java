@@ -22,9 +22,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenParser jwtTokenParser;
+    private final TenantContext tenantContext;
 
-    public JwtAuthenticationFilter(JwtTokenParser jwtTokenParser) {
+    public JwtAuthenticationFilter(JwtTokenParser jwtTokenParser, TenantContext tenantContext) {
         this.jwtTokenParser = jwtTokenParser;
+        this.tenantContext = tenantContext;
     }
 
     @Override
@@ -47,6 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         principal, null, authorities);
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                tenantContext.setTenantId(principal.tenantId());
             } catch (InvalidTokenException e) {
                 // Invalid token — clear context and let Spring Security return 401
                 SecurityContextHolder.clearContext();

@@ -41,7 +41,7 @@ public class WorkflowDefinitionController {
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID id) {
 
-        var definition = service.getById(id);
+        var definition = service.getById(principal.tenantId(), id);
         return ResponseEntity.ok(DefinitionResponse.from(definition));
     }
 
@@ -50,7 +50,7 @@ public class WorkflowDefinitionController {
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID id) {
 
-        var definition = service.publish(id);
+        var definition = service.publish(principal.tenantId(), id);
         return ResponseEntity.ok(DefinitionResponse.from(definition));
     }
 }
