@@ -1,0 +1,69 @@
+package com.atlas.identity.service;
+
+import com.atlas.identity.domain.Permission;
+import com.atlas.identity.domain.Role;
+import com.atlas.identity.dto.AssignPermissionsRequest;
+import com.atlas.identity.dto.CreateRoleRequest;
+import com.atlas.identity.dto.PermissionMappingResponse;
+import com.atlas.identity.repository.PermissionRepository;
+import com.atlas.identity.repository.RoleRepository;
+import com.atlas.identity.repository.TenantRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+@Service
+public class RoleService {
+
+    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+    private final TenantRepository tenantRepository;
+
+    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository, TenantRepository tenantRepository) {
+        this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
+        this.tenantRepository = tenantRepository;
+    }
+
+    @Transactional
+    public Role createRole(CreateRoleRequest request) {
+        if (!tenantRepository.existsById(request.tenantId())) {
+            throw new IllegalArgumentException("Tenant with id '" + request.tenantId() + "' does not exist");
+        }
+        if (roleRepository.existsByTenantIdAndName(request.tenantId(), request.name())) {
+            throw new IllegalArgumentException(
+                    "Role with name '" + request.name() + "' already exists in this tenant");
+        }
+        var role = new Role(request.tenantId(), request.name(), request.description());
+        return roleRepository.save(role);
+    }
+
+    @Transactional
+    public Role assignPermissions(UUID roleId, AssignPermissionsRequest request) {
+        var role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new IllegalArgumentException("Role with id '" + roleId + "' does not exist"));
+
+        Set<Permission> permissions = permissionRepository.findByNameIn(request.permissions());
+        if (permissions.size() != request.permissions().size()) {
+            Set<String> foundNames = new java.util.HashSet<>();
+            for (Permission p : permissions) {
+                foundNames.add(p.getName());
+            }
+            Set<String> unknown = new java.util.HashSet<>(request.permissions());
+            unknown.removeAll(foundNames);
+            throw new IllegalArgumentException("Unknown permissions: " + unknown);
+        }
+
+        role.setPermissions(permissions);
+        return roleRepository.save(role);
+    }
+
+    @Transactional(readOnly = true)
+    public PermissionMappingResponse getAllPermissionMappings(UUID tenantId) {
+        List<Role> roles = roleRepository.findByTenantIdWithPermissions(tenantId);
+        return PermissionMappingResponse.from(roles);
+    }
+}
