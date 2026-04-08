@@ -1,0 +1,53 @@
+server:
+  port: ${ATLAS_IDENTITY_PORT:8081}
+
+spring:
+  application:
+    name: identity-service
+  datasource:
+    url: jdbc:postgresql://${ATLAS_DB_HOST:localhost}:${ATLAS_DB_PORT:5432}/${ATLAS_DB_NAME:atlas}?currentSchema=identity
+    username: ${ATLAS_DB_USER:atlas}
+    password: ${ATLAS_DB_PASSWORD:atlas}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: identity
+        format_sql: true
+    open-in-view: false
+  flyway:
+    schemas: identity
+    default-schema: identity
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${ATLAS_KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+
+atlas:
+  jwt:
+    secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
+    access-token-expiry-minutes: 15
+    refresh-token-expiry-days: 7
+  security:
+    bcrypt-strength: 12
+    max-failed-attempts: 5
+    lockout-duration-minutes: 15
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: identity-service
