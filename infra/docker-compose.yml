@@ -1,7 +1,7 @@
 services:
 
   postgres:
-    image: postgres:16
+    image: postgres:17
     ports:
       - "5432:5432"
     environment:
@@ -19,7 +19,7 @@ services:
       start_period: 10s
 
   kafka:
-    image: confluentinc/cp-kafka:7.6.0
+    image: confluentinc/cp-kafka:8.2.0
     ports:
       - "9092:9092"
     environment:
@@ -45,7 +45,7 @@ services:
       start_period: 30s
 
   kafka-init:
-    image: confluentinc/cp-kafka:7.6.0
+    image: confluentinc/cp-kafka:8.2.0
     depends_on:
       kafka:
         condition: service_healthy
@@ -55,7 +55,7 @@ services:
     restart: on-failure
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     ports:
       - "6379:6379"
     volumes:
@@ -68,7 +68,7 @@ services:
       start_period: 5s
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.11.0
     ports:
       - "9090:9090"
     volumes:
@@ -88,7 +88,7 @@ services:
         condition: service_healthy
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.4.2
     ports:
       - "3000:3000"
     environment:
@@ -102,7 +102,7 @@ services:
       - tempo
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.10.3
     ports:
       - "3200:3200"
       - "4317:4317"
