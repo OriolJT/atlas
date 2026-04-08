@@ -1,10 +1,12 @@
 package com.atlas.identity.service;
 
+import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.domain.RefreshToken;
 import com.atlas.identity.domain.Role;
 import com.atlas.identity.domain.User;
 import com.atlas.identity.dto.LoginRequest;
 import com.atlas.identity.dto.LoginResponse;
+import com.atlas.identity.repository.OutboxRepository;
 import com.atlas.identity.repository.RefreshTokenRepository;
 import com.atlas.identity.repository.UserRepository;
 import com.atlas.identity.security.JwtTokenProvider;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AuthService {
@@ -23,6 +26,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final OutboxRepository outboxRepository;
     private final int maxFailedAttempts;
     private final int lockoutDurationMinutes;
 
@@ -31,12 +35,14 @@ public class AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenProvider jwtTokenProvider,
+            OutboxRepository outboxRepository,
             @Value("${atlas.security.max-failed-attempts}") int maxFailedAttempts,
             @Value("${atlas.security.lockout-duration-minutes}") int lockoutDurationMinutes) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.outboxRepository = outboxRepository;
         this.maxFailedAttempts = maxFailedAttempts;
         this.lockoutDurationMinutes = lockoutDurationMinutes;
     }
@@ -92,6 +98,16 @@ public class AuthService {
         refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(token -> {
             token.revoke();
             refreshTokenRepository.save(token);
+
+            Map<String, Object> payload = Map.of(
+                    "tokenId", token.getTokenId().toString(),
+                    "userId", token.getUserId().toString(),
+                    "tenantId", token.getTenantId().toString()
+            );
+
+            outboxRepository.save(new OutboxEvent(
+                    "RefreshToken", token.getTokenId(), "token.revoked",
+                    "domain.events", payload, token.getTenantId()));
         });
     }
 

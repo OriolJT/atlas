@@ -1,19 +1,25 @@
 package com.atlas.identity.service;
 
+import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.domain.Permission;
 import com.atlas.identity.domain.Role;
+import com.atlas.identity.domain.User;
 import com.atlas.identity.dto.AssignPermissionsRequest;
 import com.atlas.identity.dto.CreateRoleRequest;
 import com.atlas.identity.dto.PermissionMappingResponse;
+import com.atlas.identity.repository.OutboxRepository;
 import com.atlas.identity.repository.PermissionRepository;
 import com.atlas.identity.repository.RoleRepository;
 import com.atlas.identity.repository.TenantRepository;
+import com.atlas.identity.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class RoleService {
@@ -21,11 +27,17 @@ public class RoleService {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final TenantRepository tenantRepository;
+    private final UserRepository userRepository;
+    private final OutboxRepository outboxRepository;
 
-    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository, TenantRepository tenantRepository) {
+    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository,
+                       TenantRepository tenantRepository, UserRepository userRepository,
+                       OutboxRepository outboxRepository) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.tenantRepository = tenantRepository;
+        this.userRepository = userRepository;
+        this.outboxRepository = outboxRepository;
     }
 
     @Transactional
@@ -58,7 +70,48 @@ public class RoleService {
         }
 
         role.setPermissions(permissions);
-        return roleRepository.save(role);
+        role = roleRepository.save(role);
+
+        List<String> permissionNames = permissions.stream()
+                .map(Permission::getName)
+                .collect(Collectors.toList());
+
+        Map<String, Object> payload = Map.of(
+                "roleId", role.getRoleId().toString(),
+                "tenantId", role.getTenantId().toString(),
+                "roleName", role.getName(),
+                "permissions", permissionNames
+        );
+
+        outboxRepository.save(new OutboxEvent(
+                "Role", role.getRoleId(), "role.permissions_changed",
+                "domain.events", payload, role.getTenantId()));
+
+        return role;
+    }
+
+    @Transactional
+    public User assignRoleToUser(UUID userId, UUID roleId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User with id '" + userId + "' does not exist"));
+        var role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new IllegalArgumentException("Role with id '" + roleId + "' does not exist"));
+
+        user.addRole(role);
+        user = userRepository.save(user);
+
+        Map<String, Object> payload = Map.of(
+                "userId", user.getUserId().toString(),
+                "tenantId", user.getTenantId().toString(),
+                "roleId", role.getRoleId().toString(),
+                "roleName", role.getName()
+        );
+
+        outboxRepository.save(new OutboxEvent(
+                "User", user.getUserId(), "user.role_assigned",
+                "domain.events", payload, user.getTenantId()));
+
+        return user;
     }
 
     @Transactional(readOnly = true)

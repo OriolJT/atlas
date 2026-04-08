@@ -1,7 +1,4 @@
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
   flyway:
     schemas: identity
     default-schema: identity

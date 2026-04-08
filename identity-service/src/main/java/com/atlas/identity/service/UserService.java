@@ -1,13 +1,16 @@
 package com.atlas.identity.service;
 
+import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.domain.User;
 import com.atlas.identity.dto.CreateUserRequest;
+import com.atlas.identity.repository.OutboxRepository;
 import com.atlas.identity.repository.TenantRepository;
 import com.atlas.identity.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,11 +20,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final TenantRepository tenantRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OutboxRepository outboxRepository;
 
-    public UserService(UserRepository userRepository, TenantRepository tenantRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, TenantRepository tenantRepository,
+                       PasswordEncoder passwordEncoder, OutboxRepository outboxRepository) {
         this.userRepository = userRepository;
         this.tenantRepository = tenantRepository;
         this.passwordEncoder = passwordEncoder;
+        this.outboxRepository = outboxRepository;
     }
 
     @Transactional
@@ -35,7 +41,24 @@ public class UserService {
         }
         String passwordHash = passwordEncoder.encode(request.password());
         var user = new User(request.tenantId(), request.email(), passwordHash, request.firstName(), request.lastName());
-        return userRepository.save(user);
+        user = userRepository.save(user);
+
+        Map<String, Object> payload = Map.of(
+                "userId", user.getUserId().toString(),
+                "tenantId", user.getTenantId().toString(),
+                "email", user.getEmail(),
+                "firstName", user.getFirstName(),
+                "lastName", user.getLastName()
+        );
+
+        outboxRepository.save(new OutboxEvent(
+                "User", user.getUserId(), "user.created",
+                "domain.events", payload, user.getTenantId()));
+        outboxRepository.save(new OutboxEvent(
+                "User", user.getUserId(), "user.created",
+                "audit.events", payload, user.getTenantId()));
+
+        return user;
     }
 
     @Transactional(readOnly = true)
