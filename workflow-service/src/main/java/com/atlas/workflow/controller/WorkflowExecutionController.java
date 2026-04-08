@@ -2,7 +2,9 @@ package com.atlas.workflow.controller;
 
 import com.atlas.common.security.AuthenticatedPrincipal;
 import com.atlas.workflow.dto.ExecutionResponse;
+import com.atlas.workflow.dto.SignalRequest;
 import com.atlas.workflow.dto.StartExecutionRequest;
+import com.atlas.workflow.dto.TimelineResponse;
 import com.atlas.workflow.service.WorkflowExecutionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -43,5 +45,33 @@ public class WorkflowExecutionController {
 
         var execution = service.getById(id, principal.tenantId());
         return ResponseEntity.ok(ExecutionResponse.from(execution));
+    }
+
+    @PostMapping("/{id}/signal")
+    public ResponseEntity<ExecutionResponse> signal(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID id,
+            @Valid @RequestBody SignalRequest request) {
+
+        var execution = service.signal(id, principal.tenantId(), request);
+        return ResponseEntity.ok(ExecutionResponse.from(execution));
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<ExecutionResponse> cancel(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID id) {
+
+        var execution = service.cancel(id, principal.tenantId());
+        return ResponseEntity.ok(ExecutionResponse.from(execution));
+    }
+
+    @GetMapping("/{id}/timeline")
+    public ResponseEntity<TimelineResponse> timeline(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID id) {
+
+        var timeline = service.getTimeline(id, principal.tenantId());
+        return ResponseEntity.ok(timeline);
     }
 }
