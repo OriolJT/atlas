@@ -21,9 +21,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final TenantContext tenantContext;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, TenantContext tenantContext) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.tenantContext = tenantContext;
     }
 
     @Override
@@ -49,6 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new JwtAuthenticationDetails(userId, tenantId, roles));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                tenantContext.setTenantId(tenantId);
             }
         }
 

@@ -2,6 +2,7 @@ package com.atlas.identity.controller;
 
 import com.atlas.identity.dto.CreateUserRequest;
 import com.atlas.identity.dto.UserResponse;
+import com.atlas.identity.security.TenantContext;
 import com.atlas.identity.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +21,11 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final TenantContext tenantContext;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, TenantContext tenantContext) {
         this.userService = userService;
+        this.tenantContext = tenantContext;
     }
 
     @PostMapping
@@ -35,7 +38,10 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUser(@PathVariable UUID id) {
-        return userService.findById(id)
+        var result = tenantContext.isSet()
+                ? userService.findByTenantIdAndUserId(tenantContext.getTenantId(), id)
+                : userService.findById(id);
+        return result
                 .map(UserResponse::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
