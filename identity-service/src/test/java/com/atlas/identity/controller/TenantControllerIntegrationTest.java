@@ -26,7 +26,7 @@ class TenantControllerIntegrationTest {
 
     @Test
     void createTenant_returnsCreatedWithLocation() {
-        var request = new CreateTenantRequest("Acme Corp", "acme-corp");
+        var request = new CreateTenantRequest("Test Corp", "test-corp");
 
         ResponseEntity<TenantResponse> response = restTemplate.postForEntity(
                 "/api/v1/tenants", request, TenantResponse.class);
@@ -38,8 +38,8 @@ class TenantControllerIntegrationTest {
         TenantResponse body = response.getBody();
         assertThat(body).isNotNull();
         assertThat(body.tenantId()).isNotNull();
-        assertThat(body.name()).isEqualTo("Acme Corp");
-        assertThat(body.slug()).isEqualTo("acme-corp");
+        assertThat(body.name()).isEqualTo("Test Corp");
+        assertThat(body.slug()).isEqualTo("test-corp");
         assertThat(body.status()).isEqualTo("ACTIVE");
         assertThat(body.createdAt()).isNotNull();
         assertThat(body.updatedAt()).isNotNull();
