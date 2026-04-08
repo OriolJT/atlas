@@ -1,11 +1,13 @@
 package com.atlas.workflow.service;
 
+import com.atlas.workflow.domain.DeadLetterItem;
 import com.atlas.workflow.domain.ExecutionStatus;
 import com.atlas.workflow.domain.OutboxEvent;
 import com.atlas.workflow.domain.StepExecution;
 import com.atlas.workflow.domain.StepStatus;
 import com.atlas.workflow.domain.WorkflowDefinition;
 import com.atlas.workflow.domain.WorkflowExecution;
+import com.atlas.workflow.repository.DeadLetterItemRepository;
 import com.atlas.workflow.repository.OutboxRepository;
 import com.atlas.workflow.repository.StepExecutionRepository;
 import com.atlas.workflow.repository.WorkflowDefinitionRepository;
@@ -37,19 +39,22 @@ public class StepResultProcessor {
     private final OutboxRepository outboxRepository;
     private final StepStateMachine stepStateMachine;
     private final CompensationEngine compensationEngine;
+    private final DeadLetterItemRepository deadLetterItemRepository;
 
     public StepResultProcessor(StepExecutionRepository stepExecutionRepository,
                                WorkflowExecutionRepository executionRepository,
                                WorkflowDefinitionRepository definitionRepository,
                                OutboxRepository outboxRepository,
                                StepStateMachine stepStateMachine,
-                               CompensationEngine compensationEngine) {
+                               CompensationEngine compensationEngine,
+                               DeadLetterItemRepository deadLetterItemRepository) {
         this.stepExecutionRepository = stepExecutionRepository;
         this.executionRepository = executionRepository;
         this.definitionRepository = definitionRepository;
         this.outboxRepository = outboxRepository;
         this.stepStateMachine = stepStateMachine;
         this.compensationEngine = compensationEngine;
+        this.deadLetterItemRepository = deadLetterItemRepository;
     }
 
     @Transactional
@@ -214,6 +219,18 @@ public class StepResultProcessor {
             stepStateMachine.validate(step.getStatus(), StepStatus.DEAD_LETTERED);
             step.transitionTo(StepStatus.DEAD_LETTERED);
             stepExecutionRepository.save(step);
+
+            // Create dead-letter item for observability and manual replay
+            DeadLetterItem deadLetterItem = DeadLetterItem.create(
+                    step.getTenantId(),
+                    step.getExecutionId(),
+                    step.getStepExecutionId(),
+                    step.getStepName(),
+                    error,
+                    step.getAttemptCount(),
+                    step.getInputJson()
+            );
+            deadLetterItemRepository.save(deadLetterItem);
 
             log.warn("Step {} exhausted all retries, dead-lettering. Starting compensation for execution {}",
                     step.getStepExecutionId(), execution.getExecutionId());
