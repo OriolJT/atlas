@@ -1,0 +1,38 @@
+# Build
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Environment
+.env
+*.log
+
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Test output
+/surefire-reports/
