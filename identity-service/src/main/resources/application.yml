@@ -32,12 +32,19 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       acks: all
+  data:
+    redis:
+      host: ${ATLAS_REDIS_HOST:localhost}
+      port: ${ATLAS_REDIS_PORT:6379}
 
 atlas:
   jwt:
     secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
     access-token-expiry-minutes: 15
     refresh-token-expiry-days: 7
+  rate-limit:
+    requests-per-minute: 600
+    burst-size: 100
   security:
     bcrypt-strength: 12
     max-failed-attempts: 5

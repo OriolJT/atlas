@@ -47,6 +47,9 @@ spring:
 atlas:
   jwt:
     secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
+  rate-limit:
+    requests-per-minute: 600
+    burst-size: 100
 
 management:
   endpoints:

@@ -39,10 +39,17 @@ spring:
       auto-offset-reset: earliest
       properties:
         spring.json.trusted.packages: "com.atlas.*"
+  data:
+    redis:
+      host: ${ATLAS_REDIS_HOST:localhost}
+      port: ${ATLAS_REDIS_PORT:6379}
 
 atlas:
   jwt:
     secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
+  rate-limit:
+    requests-per-minute: 600
+    burst-size: 100
 
 management:
   endpoints:

@@ -26,6 +26,9 @@ spring:
 atlas:
   jwt:
     secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
+  rate-limit:
+    requests-per-minute: 600
+    burst-size: 100
   worker:
     concurrency: ${ATLAS_WORKER_CONCURRENCY:4}
     drain-timeout-seconds: ${ATLAS_WORKER_DRAIN_TIMEOUT_S:30}
