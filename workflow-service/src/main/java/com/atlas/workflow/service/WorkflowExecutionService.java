@@ -43,27 +43,34 @@ public class WorkflowExecutionService {
     private final StepExecutionRepository stepExecutionRepository;
     private final OutboxRepository outboxRepository;
     private final StepResultProcessor stepResultProcessor;
+    private final QuotaService quotaService;
 
     public WorkflowExecutionService(WorkflowExecutionRepository executionRepository,
                                      WorkflowDefinitionRepository definitionRepository,
                                      StepExecutionRepository stepExecutionRepository,
                                      OutboxRepository outboxRepository,
-                                     @Lazy StepResultProcessor stepResultProcessor) {
+                                     @Lazy StepResultProcessor stepResultProcessor,
+                                     QuotaService quotaService) {
         this.executionRepository = executionRepository;
         this.definitionRepository = definitionRepository;
         this.stepExecutionRepository = stepExecutionRepository;
         this.outboxRepository = outboxRepository;
         this.stepResultProcessor = stepResultProcessor;
+        this.quotaService = quotaService;
     }
 
     @Transactional
     public WorkflowExecution startExecution(UUID tenantId, StartExecutionRequest request) {
-        // Idempotency check: return existing execution if found
+        // Idempotency check: return existing execution before quota enforcement
         Optional<WorkflowExecution> existing = executionRepository
                 .findByTenantIdAndIdempotencyKey(tenantId, request.idempotencyKey());
         if (existing.isPresent()) {
             return existing.get();
         }
+
+        // Quota enforcement: rate and concurrency limits
+        quotaService.checkExecutionQuota(tenantId);
+        quotaService.checkConcurrentExecutionQuota(tenantId);
 
         // Validate definition exists and is PUBLISHED (tenant-scoped lookup)
         WorkflowDefinition definition = definitionRepository

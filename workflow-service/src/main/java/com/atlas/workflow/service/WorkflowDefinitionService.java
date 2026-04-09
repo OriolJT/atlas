@@ -14,13 +14,17 @@ import java.util.UUID;
 public class WorkflowDefinitionService {
 
     private final WorkflowDefinitionRepository repository;
+    private final QuotaService quotaService;
 
-    public WorkflowDefinitionService(WorkflowDefinitionRepository repository) {
+    public WorkflowDefinitionService(WorkflowDefinitionRepository repository, QuotaService quotaService) {
         this.repository = repository;
+        this.quotaService = quotaService;
     }
 
     @Transactional
     public WorkflowDefinition create(UUID tenantId, CreateDefinitionRequest request) {
+        quotaService.checkDefinitionQuota(tenantId);
+
         if (repository.existsByTenantIdAndNameAndVersion(tenantId, request.name(), request.version())) {
             throw new ConflictException(
                     "Workflow definition with name '" + request.name()

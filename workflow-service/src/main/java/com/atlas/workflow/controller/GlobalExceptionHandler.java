@@ -3,6 +3,7 @@ package com.atlas.workflow.controller;
 import com.atlas.common.web.ErrorResponse;
 import com.atlas.common.web.FieldError;
 import com.atlas.workflow.exception.ConflictException;
+import com.atlas.workflow.exception.QuotaExceededException;
 import com.atlas.workflow.exception.ResourceNotFoundException;
 import com.atlas.workflow.exception.UnprocessableException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,16 @@ public class GlobalExceptionHandler {
         String correlationId = getCorrelationId(request);
         var error = ErrorResponse.of("ATLAS-WORKFLOW-005", ex.getMessage(), correlationId);
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
+    }
+
+    @ExceptionHandler(QuotaExceededException.class)
+    public ResponseEntity<ErrorResponse> handleQuotaExceeded(QuotaExceededException ex, HttpServletRequest request) {
+        String correlationId = getCorrelationId(request);
+        String details = "quota=" + ex.getQuotaType()
+                + ", current=" + ex.getCurrent()
+                + ", limit=" + ex.getLimit();
+        var error = ErrorResponse.withDetails("ATLAS-WF-008", ex.getMessage(), details, correlationId);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
     }
 
     @ExceptionHandler(IllegalStateException.class)

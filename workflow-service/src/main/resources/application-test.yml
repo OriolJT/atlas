@@ -8,3 +8,9 @@ spring:
 atlas:
   jwt:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256
+  identity-service:
+    url: http://localhost:0  # Not reachable in tests; QuotaService will use defaults
+  quota:
+    default-max-definitions: 2       # Low limit so quota tests hit the ceiling quickly
+    default-max-executions-per-minute: 60
+    default-max-concurrent-executions: 10

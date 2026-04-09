@@ -13,4 +13,6 @@ public interface WorkflowDefinitionRepository extends JpaRepository<WorkflowDefi
     boolean existsByTenantIdAndNameAndVersion(UUID tenantId, String name, int version);
 
     Optional<WorkflowDefinition> findByDefinitionIdAndTenantId(UUID definitionId, UUID tenantId);
+
+    long countByTenantId(UUID tenantId);
 }
