@@ -12,6 +12,7 @@ import com.atlas.workflow.repository.OutboxRepository;
 import com.atlas.workflow.repository.StepExecutionRepository;
 import com.atlas.workflow.repository.WorkflowDefinitionRepository;
 import com.atlas.workflow.repository.WorkflowExecutionRepository;
+import com.atlas.workflow.scheduler.DelayScheduler;
 import com.atlas.workflow.statemachine.StepStateMachine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class StepResultProcessor {
     private final StepStateMachine stepStateMachine;
     private final CompensationEngine compensationEngine;
     private final DeadLetterItemRepository deadLetterItemRepository;
+    private final DelayScheduler delayScheduler;
 
     public StepResultProcessor(StepExecutionRepository stepExecutionRepository,
                                WorkflowExecutionRepository executionRepository,
@@ -49,7 +51,8 @@ public class StepResultProcessor {
                                OutboxRepository outboxRepository,
                                StepStateMachine stepStateMachine,
                                CompensationEngine compensationEngine,
-                               DeadLetterItemRepository deadLetterItemRepository) {
+                               DeadLetterItemRepository deadLetterItemRepository,
+                               DelayScheduler delayScheduler) {
         this.stepExecutionRepository = stepExecutionRepository;
         this.executionRepository = executionRepository;
         this.definitionRepository = definitionRepository;
@@ -57,6 +60,7 @@ public class StepResultProcessor {
         this.stepStateMachine = stepStateMachine;
         this.compensationEngine = compensationEngine;
         this.deadLetterItemRepository = deadLetterItemRepository;
+        this.delayScheduler = delayScheduler;
     }
 
     @Transactional
@@ -248,17 +252,21 @@ public class StepResultProcessor {
 
     private void handleDelayRequested(StepExecution step, Long delayMs) {
         long delay = delayMs != null ? delayMs : BASE_BACKOFF_MS;
-        Instant nextRetryAt = Instant.now().plusMillis(delay);
+        Instant wakeUp = Instant.now().plusMillis(delay);
 
-        // RUNNING -> FAILED -> RETRY_SCHEDULED
+        // RUNNING -> FAILED -> RETRY_SCHEDULED (reuse existing state machine)
         stepStateMachine.validate(step.getStatus(), StepStatus.FAILED);
         step.transitionTo(StepStatus.FAILED);
 
         stepStateMachine.validate(step.getStatus(), StepStatus.RETRY_SCHEDULED);
-        step.scheduleRetry(nextRetryAt);
+        step.scheduleRetry(wakeUp);
         stepExecutionRepository.save(step);
 
-        log.info("Step {} delay requested, scheduled retry at {}", step.getStepExecutionId(), nextRetryAt);
+        // Schedule via Redis sorted set for precise wake-up
+        delayScheduler.schedule(step.getStepExecutionId(), wakeUp.toEpochMilli());
+
+        log.info("Step {} delay requested, scheduled in Redis delay queue for {}",
+                step.getStepExecutionId(), wakeUp);
     }
 
     private void handleWaiting(StepExecution step, WorkflowExecution execution) {
