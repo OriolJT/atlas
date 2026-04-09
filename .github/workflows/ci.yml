@@ -20,28 +20,28 @@ jobs:
           java-version: '25'
           cache: 'maven'
 
-      - name: Build all modules
-        run: mvn compile -q
+      - name: Build and install all modules (skip tests)
+        run: mvn install -DskipTests -q
 
       - name: Run common module tests
-        run: mvn test -pl common -q
+        run: mvn test -pl common
 
       - name: Run identity-service tests
-        run: mvn test -pl identity-service
+        run: mvn test -pl identity-service -am
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
 
       - name: Run workflow-service tests
-        run: mvn test -pl workflow-service
+        run: mvn test -pl workflow-service -am
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
 
       - name: Run worker-service tests
-        run: mvn test -pl worker-service
+        run: mvn test -pl worker-service -am
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
 
       - name: Run audit-service tests
-        run: mvn test -pl audit-service
+        run: mvn test -pl audit-service -am
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
