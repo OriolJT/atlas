@@ -1,3 +1,4 @@
+// Service-local copy — intentionally not in common module to keep services independently deployable
 package com.atlas.workflow.config;
 
 import com.atlas.workflow.security.TenantContext;

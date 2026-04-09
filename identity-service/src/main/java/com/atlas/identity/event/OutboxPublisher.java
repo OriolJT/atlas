@@ -4,6 +4,7 @@ import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.repository.OutboxRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class OutboxPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
+    private static final int BATCH_SIZE = 50;
 
     private final OutboxRepository outboxRepository;
     private final KafkaTemplate<String, Map<String, Object>> kafkaTemplate;
@@ -26,11 +28,11 @@ public class OutboxPublisher {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    @Scheduled(fixedRate = 500)
+    @Scheduled(fixedDelay = 500)
     @Transactional
     public void pollAndPublish() {
-        List<OutboxEvent> events = outboxRepository.findUnpublishedOrderedByAggregateAndCreatedAt();
-        for (OutboxEvent event : events) {
+        List<OutboxEvent> batch = outboxRepository.findUnpublishedBatch(PageRequest.of(0, BATCH_SIZE));
+        for (OutboxEvent event : batch) {
             try {
                 kafkaTemplate.send(event.getTopic(), event.getTenantId().toString(), event.getPayload())
                         .get();
@@ -41,7 +43,7 @@ public class OutboxPublisher {
             } catch (Exception e) {
                 log.error("Failed to publish outbox event {} of type {} to topic {}: {}",
                         event.getId(), event.getEventType(), event.getTopic(), e.getMessage());
-                break;
+                break; // stop processing batch on failure to preserve ordering
             }
         }
     }

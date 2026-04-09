@@ -53,7 +53,22 @@ public class StepCommandConsumer {
     @KafkaListener(topics = "workflow.steps.execute", groupId = "worker-service")
     @SuppressWarnings("unchecked")
     public void onStepCommand(Map<String, Object> payload) {
-        StepCommand command = parseCommand(payload);
+        StepCommand command;
+        try {
+            command = parseCommand(payload);
+        } catch (IllegalArgumentException e) {
+            log.error("Dropping poison message: {}", e.getMessage());
+            // Publish a non-retryable FAILED result if we can extract enough info
+            String stepExecutionId = payload.get("step_execution_id") != null
+                    ? payload.get("step_execution_id").toString() : null;
+            String tenantId = payload.get("tenant_id") != null
+                    ? payload.get("tenant_id").toString() : null;
+            if (stepExecutionId != null && tenantId != null) {
+                StepResult failedResult = StepResult.failure(stepExecutionId, 0, e.getMessage(), true);
+                resultPublisher.publish(failedResult, tenantId);
+            }
+            return;
+        }
 
         log.info("Received step command: stepExecutionId={} stepType={} attempt={}",
                 command.stepExecutionId(), command.stepType(), command.attempt());
@@ -99,13 +114,33 @@ public class StepCommandConsumer {
 
     @SuppressWarnings("unchecked")
     private StepCommand parseCommand(Map<String, Object> payload) {
+        String stepExecutionId = (String) payload.get("step_execution_id");
+        String executionId = (String) payload.get("execution_id");
+        String tenantId = (String) payload.get("tenant_id");
+        String stepName = (String) payload.get("step_name");
+        String stepType = (String) payload.get("step_type");
+
+        if (stepExecutionId == null || executionId == null || tenantId == null
+                || stepName == null || stepType == null) {
+            throw new IllegalArgumentException(
+                    "Poison message: missing required field(s) in step command — "
+                    + "step_execution_id=" + stepExecutionId
+                    + " execution_id=" + executionId
+                    + " tenant_id=" + tenantId
+                    + " step_name=" + stepName
+                    + " step_type=" + stepType);
+        }
+
+        Number attemptNum = (Number) payload.get("attempt");
+        int attempt = attemptNum != null ? attemptNum.intValue() : 1;
+
         return new StepCommand(
-                (String) payload.get("step_execution_id"),
-                (String) payload.get("execution_id"),
-                (String) payload.get("tenant_id"),
-                (String) payload.get("step_name"),
-                (String) payload.get("step_type"),
-                ((Number) payload.get("attempt")).intValue(),
+                stepExecutionId,
+                executionId,
+                tenantId,
+                stepName,
+                stepType,
+                attempt,
                 (Map<String, Object>) payload.getOrDefault("input", Map.of()),
                 ((Number) payload.getOrDefault("timeout_ms", 30000)).longValue(),
                 Boolean.TRUE.equals(payload.get("is_compensation")),

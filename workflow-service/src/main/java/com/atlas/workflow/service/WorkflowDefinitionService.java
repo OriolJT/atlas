@@ -2,11 +2,11 @@ package com.atlas.workflow.service;
 
 import com.atlas.workflow.domain.WorkflowDefinition;
 import com.atlas.workflow.dto.CreateDefinitionRequest;
+import com.atlas.workflow.exception.ConflictException;
+import com.atlas.workflow.exception.ResourceNotFoundException;
 import com.atlas.workflow.repository.WorkflowDefinitionRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -22,7 +22,7 @@ public class WorkflowDefinitionService {
     @Transactional
     public WorkflowDefinition create(UUID tenantId, CreateDefinitionRequest request) {
         if (repository.existsByTenantIdAndNameAndVersion(tenantId, request.name(), request.version())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new ConflictException(
                     "Workflow definition with name '" + request.name()
                             + "' and version " + request.version() + " already exists for this tenant");
         }
@@ -42,14 +42,14 @@ public class WorkflowDefinitionService {
     @Transactional(readOnly = true)
     public WorkflowDefinition getById(UUID tenantId, UUID definitionId) {
         return repository.findByDefinitionIdAndTenantId(definitionId, tenantId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Workflow definition not found: " + definitionId));
     }
 
     @Transactional
     public WorkflowDefinition publish(UUID tenantId, UUID definitionId) {
         WorkflowDefinition definition = repository.findByDefinitionIdAndTenantId(definitionId, tenantId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Workflow definition not found: " + definitionId));
 
         definition.publish();

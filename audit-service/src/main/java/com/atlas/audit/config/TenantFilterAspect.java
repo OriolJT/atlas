@@ -1,3 +1,4 @@
+// Service-local copy — intentionally not in common module to keep services independently deployable
 package com.atlas.audit.config;
 
 import com.atlas.audit.security.TenantContext;

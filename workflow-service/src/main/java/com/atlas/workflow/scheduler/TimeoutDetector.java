@@ -2,9 +2,7 @@ package com.atlas.workflow.scheduler;
 
 import com.atlas.workflow.domain.StepExecution;
 import com.atlas.workflow.domain.StepStatus;
-import com.atlas.workflow.repository.OutboxRepository;
 import com.atlas.workflow.repository.StepExecutionRepository;
-import com.atlas.workflow.repository.WorkflowExecutionRepository;
 import com.atlas.workflow.service.StepResultProcessor;
 import com.atlas.workflow.statemachine.StepStateMachine;
 import org.slf4j.Logger;
@@ -35,6 +33,7 @@ public class TimeoutDetector {
     }
 
     @Scheduled(fixedDelay = 10000)
+    @Transactional
     public void detectTimedOutSteps() {
         List<StepExecution> candidates = stepExecutionRepository.findRunningOrLeased();
         if (candidates.isEmpty()) {
@@ -71,8 +70,7 @@ public class TimeoutDetector {
         return false;
     }
 
-    @Transactional
-    protected void handleTimedOutStep(StepExecution step) {
+    private void handleTimedOutStep(StepExecution step) {
         log.warn("Step {} (execution {}) timed out in status {}",
                 step.getStepExecutionId(), step.getExecutionId(), step.getStatus());
 

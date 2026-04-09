@@ -1,3 +1,4 @@
+// Service-local copy — intentionally not in common module to keep services independently deployable
 package com.atlas.identity.security;
 
 import org.springframework.stereotype.Component;

@@ -4,15 +4,15 @@ import com.atlas.workflow.domain.DeadLetterItem;
 import com.atlas.workflow.domain.OutboxEvent;
 import com.atlas.workflow.domain.StepExecution;
 import com.atlas.workflow.domain.StepStatus;
+import com.atlas.workflow.exception.ConflictException;
+import com.atlas.workflow.exception.ResourceNotFoundException;
 import com.atlas.workflow.repository.DeadLetterItemRepository;
 import com.atlas.workflow.repository.OutboxRepository;
 import com.atlas.workflow.repository.StepExecutionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.atlas.common.event.EventTypes;
 
@@ -47,11 +47,11 @@ public class DeadLetterService {
     public DeadLetterItem replay(UUID deadLetterId, UUID tenantId) {
         DeadLetterItem item = deadLetterItemRepository
                 .findByDeadLetterIdAndTenantId(deadLetterId, tenantId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Dead-letter item not found: " + deadLetterId));
 
         if (item.isReplayed()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new ConflictException(
                     "Dead-letter item has already been replayed: " + deadLetterId);
         }
 
@@ -61,7 +61,7 @@ public class DeadLetterService {
 
         // Reset the step back to PENDING
         StepExecution step = stepExecutionRepository.findById(item.getStepExecutionId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Step execution not found: " + item.getStepExecutionId()));
 
         step.transitionTo(StepStatus.PENDING);

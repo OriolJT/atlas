@@ -11,16 +11,17 @@ import com.atlas.workflow.dto.SignalRequest;
 import com.atlas.workflow.dto.StartExecutionRequest;
 import com.atlas.workflow.dto.TimelineResponse;
 import com.atlas.workflow.dto.TimelineResponse.TimelineEvent;
+import com.atlas.workflow.exception.ConflictException;
+import com.atlas.workflow.exception.ResourceNotFoundException;
+import com.atlas.workflow.exception.UnprocessableException;
 import com.atlas.workflow.repository.OutboxRepository;
 import com.atlas.workflow.repository.StepExecutionRepository;
 import com.atlas.workflow.repository.WorkflowDefinitionRepository;
 import com.atlas.workflow.repository.WorkflowExecutionRepository;
 import com.atlas.workflow.statemachine.ExecutionStateMachine;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.atlas.common.event.EventTypes;
 
@@ -67,11 +68,11 @@ public class WorkflowExecutionService {
         // Validate definition exists and is PUBLISHED (tenant-scoped lookup)
         WorkflowDefinition definition = definitionRepository
                 .findByDefinitionIdAndTenantId(request.definitionId(), tenantId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Workflow definition not found: " + request.definitionId()));
 
         if (definition.getStatus() != DefinitionStatus.PUBLISHED) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+            throw new UnprocessableException(
                     "Workflow definition must be PUBLISHED to start execution; current status: "
                             + definition.getStatus());
         }
@@ -130,7 +131,7 @@ public class WorkflowExecutionService {
     public WorkflowExecution getById(UUID executionId, UUID tenantId) {
         return executionRepository.findById(executionId)
                 .filter(e -> e.getTenantId().equals(tenantId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Workflow execution not found: " + executionId));
     }
 
@@ -139,7 +140,7 @@ public class WorkflowExecutionService {
         WorkflowExecution execution = getById(executionId, tenantId);
 
         if (execution.getStatus() != ExecutionStatus.WAITING) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new ConflictException(
                     "Execution is not in WAITING state; current status: " + execution.getStatus());
         }
 
@@ -147,11 +148,11 @@ public class WorkflowExecutionService {
         StepExecution waitingStep = steps.stream()
                 .filter(s -> s.getStepName().equals(request.stepName()))
                 .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Step not found: " + request.stepName()));
 
         if (waitingStep.getStatus() != StepStatus.WAITING) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new ConflictException(
                     "Step '" + request.stepName() + "' is not in WAITING state; current status: "
                             + waitingStep.getStatus());
         }
@@ -175,7 +176,7 @@ public class WorkflowExecutionService {
         WorkflowExecution execution = getById(executionId, tenantId);
 
         if (!ExecutionStateMachine.canTransition(execution.getStatus(), ExecutionStatus.CANCELED)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new ConflictException(
                     "Execution cannot be canceled from status: " + execution.getStatus());
         }
 

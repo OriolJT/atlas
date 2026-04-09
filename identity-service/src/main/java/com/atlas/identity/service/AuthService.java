@@ -49,7 +49,7 @@ public class AuthService {
 
     @Transactional(noRollbackFor = AuthenticationException.class)
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailWithRoles(request.email())
                 .orElseThrow(() -> new AuthenticationException("ATLAS-AUTH-001", "Invalid credentials"));
 
         if (user.isLocked()) {

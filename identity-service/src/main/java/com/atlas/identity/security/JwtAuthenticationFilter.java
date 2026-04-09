@@ -1,5 +1,8 @@
+// Service-local copy — intentionally not in common module to keep services independently deployable
 package com.atlas.identity.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
@@ -37,10 +41,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
             String token = authHeader.substring(BEARER_PREFIX.length());
 
-            if (jwtTokenProvider.validateAccessToken(token)) {
-                UUID userId = jwtTokenProvider.getUserIdFromToken(token);
-                UUID tenantId = jwtTokenProvider.getTenantIdFromToken(token);
-                List<String> roles = jwtTokenProvider.getRolesFromToken(token);
+            try {
+                Claims claims = jwtTokenProvider.parseAccessToken(token);
+                UUID userId = UUID.fromString(claims.getSubject());
+                UUID tenantId = UUID.fromString(claims.get("tenant_id", String.class));
+                List<String> roles = claims.get("roles", List.class);
 
                 var authorities = roles.stream()
                         .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
@@ -52,6 +57,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 tenantContext.setTenantId(tenantId);
+            } catch (JwtException | IllegalArgumentException e) {
+                // Invalid token — clear context and let Spring Security return 401
+                SecurityContextHolder.clearContext();
             }
         }
 

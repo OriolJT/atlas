@@ -2,31 +2,47 @@ package com.atlas.workflow.controller;
 
 import com.atlas.common.web.ErrorResponse;
 import com.atlas.common.web.FieldError;
+import com.atlas.workflow.exception.ConflictException;
+import com.atlas.workflow.exception.ResourceNotFoundException;
+import com.atlas.workflow.exception.UnprocessableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
+        String correlationId = getCorrelationId(request);
+        var error = ErrorResponse.of("ATLAS-WORKFLOW-003", ex.getMessage(), correlationId);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex, HttpServletRequest request) {
+        String correlationId = getCorrelationId(request);
+        var error = ErrorResponse.of("ATLAS-WORKFLOW-004", ex.getMessage(), correlationId);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(UnprocessableException.class)
+    public ResponseEntity<ErrorResponse> handleUnprocessable(UnprocessableException ex, HttpServletRequest request) {
+        String correlationId = getCorrelationId(request);
+        var error = ErrorResponse.of("ATLAS-WORKFLOW-005", ex.getMessage(), correlationId);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
         String correlationId = getCorrelationId(request);
         var error = ErrorResponse.of("ATLAS-WORKFLOW-001", ex.getMessage(), correlationId);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-    }
-
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex, HttpServletRequest request) {
-        String correlationId = getCorrelationId(request);
-        var error = ErrorResponse.of("ATLAS-WORKFLOW-002", ex.getReason(), correlationId);
-        return ResponseEntity.status(ex.getStatusCode()).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

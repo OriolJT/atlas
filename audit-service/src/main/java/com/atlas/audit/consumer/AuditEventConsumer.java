@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Map;
@@ -28,6 +29,7 @@ public class AuditEventConsumer {
     }
 
     @KafkaListener(topics = "audit.events", groupId = "audit-service")
+    @Transactional
     @SuppressWarnings("unchecked")
     public void onAuditEvent(Map<String, Object> payload) {
         AuditEvent event = parseEvent(payload);
