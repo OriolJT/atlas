@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+          cache: 'maven'
+
+      - name: Build all modules
+        run: mvn compile -q
+
+      - name: Run common module tests
+        run: mvn test -pl common -q
+
+      - name: Run identity-service tests
+        run: mvn test -pl identity-service
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      - name: Run workflow-service tests
+        run: mvn test -pl workflow-service
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      - name: Run worker-service tests
+        run: mvn test -pl worker-service
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      - name: Run audit-service tests
+        run: mvn test -pl audit-service
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true

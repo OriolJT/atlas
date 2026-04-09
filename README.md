@@ -1,5 +1,7 @@
 # Atlas
 
+[![CI](https://github.com/OriolJT/atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/OriolJT/atlas/actions/workflows/ci.yml)
+
 **Multi-Tenant Distributed Workflow Orchestration and Event Processing Platform**
 
 Atlas is a multi-tenant distributed platform for durable workflow orchestration, asynchronous execution, and reliable event processing. It is designed to demonstrate end-to-end ownership of a distributed workflow platform under real-world constraints: failure recovery, compensation, multi-tenancy isolation, observability, and operational tooling.
