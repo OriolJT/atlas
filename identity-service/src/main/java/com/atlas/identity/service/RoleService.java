@@ -1,5 +1,6 @@
 package com.atlas.identity.service;
 
+import com.atlas.common.event.EventTypes;
 import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.domain.Permission;
 import com.atlas.identity.domain.Role;
@@ -85,7 +86,7 @@ public class RoleService {
 
         outboxRepository.save(new OutboxEvent(
                 "Role", role.getRoleId(), "role.permissions_changed",
-                "domain.events", payload, role.getTenantId()));
+                EventTypes.TOPIC_DOMAIN_EVENTS, payload, role.getTenantId()));
 
         return role;
     }
@@ -109,7 +110,7 @@ public class RoleService {
 
         outboxRepository.save(new OutboxEvent(
                 "User", user.getUserId(), "user.role_assigned",
-                "domain.events", payload, user.getTenantId()));
+                EventTypes.TOPIC_DOMAIN_EVENTS, payload, user.getTenantId()));
 
         return user;
     }

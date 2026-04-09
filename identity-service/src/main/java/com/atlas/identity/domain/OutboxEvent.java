@@ -8,7 +8,7 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,10 +41,10 @@ public class OutboxEvent {
     private UUID tenantId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+    private Instant publishedAt;
 
     protected OutboxEvent() {
         // JPA
@@ -59,11 +59,11 @@ public class OutboxEvent {
         this.topic = topic;
         this.payload = payload;
         this.tenantId = tenantId;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 
     public void markPublished() {
-        this.publishedAt = LocalDateTime.now();
+        this.publishedAt = Instant.now();
     }
 
     public UUID getId() {
@@ -94,11 +94,11 @@ public class OutboxEvent {
         return tenantId;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public LocalDateTime getPublishedAt() {
+    public Instant getPublishedAt() {
         return publishedAt;
     }
 }

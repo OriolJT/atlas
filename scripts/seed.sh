@@ -97,7 +97,7 @@ LOGIN_RESPONSE=$(post_json_no_auth \
   "$IDENTITY_URL/api/v1/auth/login" \
   '{"email":"admin@acme.com","password":"Atlas2026!"}')
 
-ADMIN_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+ADMIN_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
 
 if [[ -z "$ADMIN_TOKEN" ]]; then
   error "Failed to obtain admin JWT. Check identity-service logs."

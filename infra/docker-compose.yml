@@ -181,8 +181,6 @@ services:
       - "8083:8083"
     environment:
       SPRING_PROFILES_ACTIVE: local
-      ATLAS_DB_HOST: postgres
-      ATLAS_DB_PASSWORD: ${POSTGRES_PASSWORD}
       ATLAS_KAFKA_BOOTSTRAP: kafka:9092
       ATLAS_JWT_SECRET: ${ATLAS_JWT_SECRET}
       ATLAS_REDIS_HOST: redis

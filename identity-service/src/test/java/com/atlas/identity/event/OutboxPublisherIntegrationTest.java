@@ -10,7 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -62,7 +62,7 @@ class OutboxPublisherIntegrationTest {
         // Publish once
         outboxPublisher.pollAndPublish();
         var firstPublish = outboxRepository.findById(event.getId()).orElseThrow();
-        LocalDateTime firstPublishedAt = firstPublish.getPublishedAt();
+        Instant firstPublishedAt = firstPublish.getPublishedAt();
         assertThat(firstPublishedAt).isNotNull();
 
         // Publish again — should not re-process already published events

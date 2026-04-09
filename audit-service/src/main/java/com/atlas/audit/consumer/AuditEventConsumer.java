@@ -2,6 +2,7 @@ package com.atlas.audit.consumer;
 
 import com.atlas.audit.domain.AuditEvent;
 import com.atlas.audit.repository.AuditEventRepository;
+import com.atlas.common.event.EventTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,9 +29,8 @@ public class AuditEventConsumer {
         this.repository = repository;
     }
 
-    @KafkaListener(topics = "audit.events", groupId = "audit-service")
+    @KafkaListener(topics = EventTypes.TOPIC_AUDIT_EVENTS, groupId = "audit-service")
     @Transactional
-    @SuppressWarnings("unchecked")
     public void onAuditEvent(Map<String, Object> payload) {
         AuditEvent event = parseEvent(payload);
         log.debug("Received audit event: auditEventId={} eventType={} tenantId={}",

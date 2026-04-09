@@ -1,5 +1,6 @@
 package com.atlas.worker.consumer;
 
+import com.atlas.common.event.EventTypes;
 import com.atlas.worker.executor.StepCommand;
 import com.atlas.worker.executor.StepExecutor;
 import com.atlas.worker.executor.StepExecutorRegistry;
@@ -50,8 +51,7 @@ public class StepCommandConsumer {
         this.workerId = resolveWorkerId();
     }
 
-    @KafkaListener(topics = "workflow.steps.execute", groupId = "worker-service")
-    @SuppressWarnings("unchecked")
+    @KafkaListener(topics = EventTypes.TOPIC_STEP_EXECUTE, groupId = "worker-service")
     public void onStepCommand(Map<String, Object> payload) {
         StepCommand command;
         try {

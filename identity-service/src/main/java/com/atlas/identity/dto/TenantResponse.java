@@ -2,7 +2,7 @@ package com.atlas.identity.dto;
 
 import com.atlas.identity.domain.Tenant;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 public record TenantResponse(
@@ -10,8 +10,8 @@ public record TenantResponse(
         String name,
         String slug,
         String status,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        Instant createdAt,
+        Instant updatedAt) {
 
     public static TenantResponse from(Tenant tenant) {
         return new TenantResponse(

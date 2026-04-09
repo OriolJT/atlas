@@ -1,5 +1,6 @@
 package com.atlas.identity.service;
 
+import com.atlas.common.event.EventTypes;
 import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.domain.RefreshToken;
 import com.atlas.identity.domain.Role;
@@ -15,7 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -107,7 +109,7 @@ public class AuthService {
 
             outboxRepository.save(new OutboxEvent(
                     "RefreshToken", token.getTokenId(), "token.revoked",
-                    "domain.events", payload, token.getTenantId()));
+                    EventTypes.TOPIC_DOMAIN_EVENTS, payload, token.getTenantId()));
         });
     }
 
@@ -120,7 +122,7 @@ public class AuthService {
         String rawRefreshToken = jwtTokenProvider.generateRefreshTokenValue();
         String refreshTokenHash = jwtTokenProvider.hashRefreshToken(rawRefreshToken);
 
-        LocalDateTime expiresAt = LocalDateTime.now().plusDays(jwtTokenProvider.getRefreshTokenExpiryDays());
+        Instant expiresAt = Instant.now().plus(jwtTokenProvider.getRefreshTokenExpiryDays(), ChronoUnit.DAYS);
         var refreshToken = new RefreshToken(refreshTokenHash, user.getUserId(), user.getTenantId(), expiresAt);
         refreshTokenRepository.save(refreshToken);
 

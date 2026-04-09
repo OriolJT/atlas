@@ -2,7 +2,7 @@ CREATE TABLE identity.permissions (
     permission_id   UUID            PRIMARY KEY,
     name            VARCHAR(255)    NOT NULL UNIQUE,
     description     VARCHAR(500),
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMPTZ       NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE identity.roles (
@@ -10,8 +10,8 @@ CREATE TABLE identity.roles (
     tenant_id       UUID            NOT NULL REFERENCES identity.tenants(tenant_id),
     name            VARCHAR(255)    NOT NULL,
     description     VARCHAR(500),
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_roles_tenant_name UNIQUE (tenant_id, name)
 );
 CREATE INDEX idx_roles_tenant_id ON identity.roles (tenant_id);

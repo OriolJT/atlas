@@ -16,7 +16,7 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -58,7 +58,7 @@ public class User {
     private int failedLoginAttempts;
 
     @Column(name = "locked_until")
-    private LocalDateTime lockedUntil;
+    private Instant lockedUntil;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -70,10 +70,10 @@ public class User {
     private Set<Role> roles = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     protected User() {
         // JPA
@@ -92,24 +92,24 @@ public class User {
 
     @PrePersist
     protected void onCreate() {
-        var now = LocalDateTime.now();
+        var now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     public boolean isLocked() {
-        return lockedUntil != null && LocalDateTime.now().isBefore(lockedUntil);
+        return lockedUntil != null && Instant.now().isBefore(lockedUntil);
     }
 
     public void incrementFailedLoginAttempts(int maxAttempts, int lockoutMinutes) {
         this.failedLoginAttempts++;
         if (this.failedLoginAttempts >= maxAttempts) {
-            this.lockedUntil = LocalDateTime.now().plusMinutes(lockoutMinutes);
+            this.lockedUntil = Instant.now().plus(lockoutMinutes, java.time.temporal.ChronoUnit.MINUTES);
         }
     }
 
@@ -170,15 +170,15 @@ public class User {
         return failedLoginAttempts;
     }
 
-    public LocalDateTime getLockedUntil() {
+    public Instant getLockedUntil() {
         return lockedUntil;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
+    public Instant getUpdatedAt() {
         return updatedAt;
     }
 

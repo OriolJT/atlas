@@ -1,5 +1,6 @@
 package com.atlas.identity.service;
 
+import com.atlas.common.event.EventTypes;
 import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.domain.User;
 import com.atlas.identity.dto.CreateUserRequest;
@@ -53,10 +54,10 @@ public class UserService {
 
         outboxRepository.save(new OutboxEvent(
                 "User", user.getUserId(), "user.created",
-                "domain.events", payload, user.getTenantId()));
+                EventTypes.TOPIC_DOMAIN_EVENTS, payload, user.getTenantId()));
         outboxRepository.save(new OutboxEvent(
                 "User", user.getUserId(), "user.created",
-                "audit.events", payload, user.getTenantId()));
+                EventTypes.TOPIC_AUDIT_EVENTS, payload, user.getTenantId()));
 
         return user;
     }

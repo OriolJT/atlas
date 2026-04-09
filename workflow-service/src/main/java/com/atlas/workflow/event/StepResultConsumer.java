@@ -1,5 +1,6 @@
 package com.atlas.workflow.event;
 
+import com.atlas.common.event.EventTypes;
 import com.atlas.workflow.service.StepResultProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,7 @@ public class StepResultConsumer {
         this.stepResultProcessor = stepResultProcessor;
     }
 
-    @KafkaListener(topics = "workflow.steps.result", groupId = "workflow-service")
+    @KafkaListener(topics = EventTypes.TOPIC_STEP_RESULT, groupId = "workflow-service")
     public void onStepResult(Map<String, Object> resultPayload) {
         log.debug("Received step result: {}", resultPayload);
         try {

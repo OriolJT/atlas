@@ -1,5 +1,6 @@
 package com.atlas.worker.publisher;
 
+import com.atlas.common.event.EventTypes;
 import com.atlas.worker.executor.StepResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +21,7 @@ import java.util.concurrent.ExecutionException;
 public class StepResultPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(StepResultPublisher.class);
-    private static final String TOPIC = "workflow.steps.result";
+    private static final String TOPIC = EventTypes.TOPIC_STEP_RESULT;
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 

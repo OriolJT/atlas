@@ -7,7 +7,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.Filter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
@@ -29,19 +30,19 @@ public class RefreshToken {
     private UUID tenantId;
 
     @Column(name = "expires_at", nullable = false, updatable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Column(name = "revoked_at")
-    private LocalDateTime revokedAt;
+    private Instant revokedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     protected RefreshToken() {
         // JPA
     }
 
-    public RefreshToken(String tokenHash, UUID userId, UUID tenantId, LocalDateTime expiresAt) {
+    public RefreshToken(String tokenHash, UUID userId, UUID tenantId, Instant expiresAt) {
         this.tokenId = UUID.randomUUID();
         this.tokenHash = tokenHash;
         this.userId = userId;
@@ -51,11 +52,11 @@ public class RefreshToken {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
+        return Instant.now().isAfter(expiresAt);
     }
 
     public boolean isRevoked() {
@@ -64,7 +65,7 @@ public class RefreshToken {
 
     public void revoke() {
         if (this.revokedAt == null) {
-            this.revokedAt = LocalDateTime.now();
+            this.revokedAt = Instant.now();
         }
     }
 
@@ -84,15 +85,15 @@ public class RefreshToken {
         return tenantId;
     }
 
-    public LocalDateTime getExpiresAt() {
+    public Instant getExpiresAt() {
         return expiresAt;
     }
 
-    public LocalDateTime getRevokedAt() {
+    public Instant getRevokedAt() {
         return revokedAt;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 }

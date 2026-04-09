@@ -3,7 +3,7 @@ package com.atlas.identity.dto;
 import com.atlas.identity.domain.Permission;
 import com.atlas.identity.domain.Role;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -14,8 +14,8 @@ public record RoleResponse(
         String name,
         String description,
         Set<String> permissions,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        Instant createdAt,
+        Instant updatedAt) {
 
     public static RoleResponse from(Role role) {
         Set<String> permissionNames = role.getPermissions().stream()

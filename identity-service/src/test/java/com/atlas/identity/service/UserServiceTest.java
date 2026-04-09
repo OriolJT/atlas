@@ -3,7 +3,6 @@ package com.atlas.identity.service;
 import com.atlas.identity.domain.User;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;

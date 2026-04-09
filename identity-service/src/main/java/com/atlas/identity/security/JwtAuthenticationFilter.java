@@ -32,7 +32,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
@@ -45,6 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Claims claims = jwtTokenProvider.parseAccessToken(token);
                 UUID userId = UUID.fromString(claims.getSubject());
                 UUID tenantId = UUID.fromString(claims.get("tenant_id", String.class));
+                @SuppressWarnings("unchecked")
                 List<String> roles = claims.get("roles", List.class);
 
                 var authorities = roles.stream()

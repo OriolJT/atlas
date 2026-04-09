@@ -6,8 +6,8 @@ CREATE TABLE identity.outbox (
     topic           VARCHAR(100)    NOT NULL,
     payload         JSONB           NOT NULL,
     tenant_id       UUID            NOT NULL,
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
-    published_at    TIMESTAMP
+    created_at      TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
+    published_at    TIMESTAMPTZ
 );
 
 CREATE INDEX idx_outbox_unpublished ON identity.outbox (created_at) WHERE published_at IS NULL;

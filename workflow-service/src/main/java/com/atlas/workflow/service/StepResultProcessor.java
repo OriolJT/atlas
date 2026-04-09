@@ -60,11 +60,11 @@ public class StepResultProcessor {
     }
 
     @Transactional
-    @SuppressWarnings("unchecked")
     public void process(Map<String, Object> resultPayload) {
         UUID stepExecutionId = UUID.fromString((String) resultPayload.get("step_execution_id"));
         String outcome = (String) resultPayload.get("outcome");
         int attemptCount = ((Number) resultPayload.get("attempt")).intValue();
+        @SuppressWarnings("unchecked")
         Map<String, Object> output = (Map<String, Object>) resultPayload.get("output");
         String error = (String) resultPayload.get("error");
         Long delayMs = resultPayload.containsKey("delay_ms")

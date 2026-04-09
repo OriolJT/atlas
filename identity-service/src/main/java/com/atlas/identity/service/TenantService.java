@@ -1,5 +1,6 @@
 package com.atlas.identity.service;
 
+import com.atlas.common.event.EventTypes;
 import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.domain.Tenant;
 import com.atlas.identity.dto.CreateTenantRequest;
@@ -40,10 +41,10 @@ public class TenantService {
 
         outboxRepository.save(new OutboxEvent(
                 "Tenant", tenant.getTenantId(), "tenant.created",
-                "domain.events", payload, tenant.getTenantId()));
+                EventTypes.TOPIC_DOMAIN_EVENTS, payload, tenant.getTenantId()));
         outboxRepository.save(new OutboxEvent(
                 "Tenant", tenant.getTenantId(), "tenant.created",
-                "audit.events", payload, tenant.getTenantId()));
+                EventTypes.TOPIC_AUDIT_EVENTS, payload, tenant.getTenantId()));
 
         return tenant;
     }

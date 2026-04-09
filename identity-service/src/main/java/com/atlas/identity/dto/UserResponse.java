@@ -2,7 +2,7 @@ package com.atlas.identity.dto;
 
 import com.atlas.identity.domain.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 public record UserResponse(
@@ -12,10 +12,8 @@ public record UserResponse(
         String firstName,
         String lastName,
         String status,
-        int failedLoginAttempts,
-        LocalDateTime lockedUntil,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        Instant createdAt,
+        Instant updatedAt) {
 
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -25,8 +23,6 @@ public record UserResponse(
                 user.getFirstName(),
                 user.getLastName(),
                 user.getStatus().name(),
-                user.getFailedLoginAttempts(),
-                user.getLockedUntil(),
                 user.getCreatedAt(),
                 user.getUpdatedAt());
     }

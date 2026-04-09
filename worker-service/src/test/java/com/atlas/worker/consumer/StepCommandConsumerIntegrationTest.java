@@ -1,5 +1,6 @@
 package com.atlas.worker.consumer;
 
+import com.atlas.common.event.EventTypes;
 import com.atlas.worker.TestcontainersConfiguration;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -29,8 +30,8 @@ import static org.awaitility.Awaitility.await;
 @Import({TestcontainersConfiguration.class, StepCommandConsumerIntegrationTest.TestConfig.class})
 class StepCommandConsumerIntegrationTest {
 
-    private static final String EXECUTE_TOPIC = "workflow.steps.execute";
-    private static final String RESULT_TOPIC = "workflow.steps.result";
+    private static final String EXECUTE_TOPIC = EventTypes.TOPIC_STEP_EXECUTE;
+    private static final String RESULT_TOPIC = EventTypes.TOPIC_STEP_RESULT;
 
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
@@ -128,7 +129,6 @@ class StepCommandConsumerIntegrationTest {
         private final List<Map<String, Object>> results = new CopyOnWriteArrayList<>();
 
         @KafkaListener(topics = RESULT_TOPIC, groupId = "test-result-consumer")
-        @SuppressWarnings("unchecked")
         public void onResult(Map<String, Object> result) {
             results.add(result);
         }
