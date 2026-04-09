@@ -3,6 +3,9 @@ server:
 spring:
   application:
     name: worker-service
+  threads:
+    virtual:
+      enabled: true
   kafka:
     bootstrap-servers: ${ATLAS_KAFKA_BOOTSTRAP:localhost:9092}
     consumer:
@@ -37,3 +40,9 @@ management:
   metrics:
     tags:
       application: worker-service
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${ATLAS_TEMPO_ENDPOINT:http://localhost:4318/v1/traces}

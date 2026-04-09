@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: identity-service
+  threads:
+    virtual:
+      enabled: true
   datasource:
     url: jdbc:postgresql://${ATLAS_DB_HOST:localhost}:${ATLAS_DB_PORT:5432}/${ATLAS_DB_NAME:atlas}?currentSchema=identity
     username: ${ATLAS_DB_USER:atlas}
@@ -51,3 +54,9 @@ management:
   metrics:
     tags:
       application: identity-service
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${ATLAS_TEMPO_ENDPOINT:http://localhost:4318/v1/traces}
