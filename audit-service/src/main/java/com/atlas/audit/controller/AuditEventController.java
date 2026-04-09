@@ -3,6 +3,9 @@ package com.atlas.audit.controller;
 import com.atlas.audit.dto.AuditEventResponse;
 import com.atlas.audit.service.AuditQueryService;
 import com.atlas.common.security.AuthenticatedPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,6 +22,7 @@ import java.util.UUID;
  * REST API for querying audit events. All requests are automatically scoped to the
  * tenant extracted from the Bearer JWT — tenant_id is never accepted as a query param.
  */
+@Tag(name = "Audit Events", description = "Query immutable audit event records scoped to the caller's tenant")
 @RestController
 @RequestMapping("/api/v1/audit-events")
 public class AuditEventController {
@@ -29,21 +33,12 @@ public class AuditEventController {
         this.queryService = queryService;
     }
 
-    /**
-     * GET /api/v1/audit-events
-     *
-     * <p>All query parameters are optional. Results are ordered newest-first and capped
-     * at the requested {@code size} (default 20, max 100).
-     *
-     * @param principal    the authenticated caller; tenant_id is read from here
-     * @param eventType    filter on event_type
-     * @param resourceType filter on resource_type
-     * @param resourceId   filter on resource_id
-     * @param actorId      filter on actor_id
-     * @param from         lower bound (inclusive) on occurred_at (ISO-8601)
-     * @param to           upper bound (inclusive) on occurred_at (ISO-8601)
-     * @param size         page size (default 20, max 100)
-     */
+    @Operation(
+            summary = "Query audit events",
+            description = "Return audit events for the caller's tenant. All filters are optional. " +
+                    "Results are ordered newest-first and capped at the requested size (default 20, max 100).")
+    @ApiResponse(responseCode = "200", description = "Audit events returned")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
     @GetMapping
     public ResponseEntity<List<AuditEventResponse>> getAuditEvents(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,

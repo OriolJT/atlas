@@ -4,6 +4,9 @@ import com.atlas.identity.dto.CreateUserRequest;
 import com.atlas.identity.dto.UserResponse;
 import com.atlas.identity.security.TenantContext;
 import com.atlas.identity.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.UUID;
 
+@Tag(name = "Users", description = "User creation and lookup within a tenant")
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
@@ -28,6 +32,10 @@ public class UserController {
         this.tenantContext = tenantContext;
     }
 
+    @Operation(summary = "Create user", description = "Create a new user within the current tenant")
+    @ApiResponse(responseCode = "201", description = "User created")
+    @ApiResponse(responseCode = "400", description = "Invalid request body")
+    @ApiResponse(responseCode = "409", description = "Email already registered in this tenant")
     @PostMapping
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
         var user = userService.createUser(request);
@@ -36,6 +44,9 @@ public class UserController {
         return ResponseEntity.created(location).body(response);
     }
 
+    @Operation(summary = "Get user", description = "Retrieve a user by UUID, scoped to the caller's tenant when a tenant context is present")
+    @ApiResponse(responseCode = "200", description = "User found")
+    @ApiResponse(responseCode = "404", description = "User not found")
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUser(@PathVariable UUID id) {
         var result = tenantContext.isSet()
