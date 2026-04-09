@@ -5,6 +5,8 @@ import com.atlas.worker.executor.StepExecutor;
 import com.atlas.worker.executor.StepExecutorRegistry;
 import com.atlas.worker.executor.StepResult;
 import com.atlas.worker.lease.LeaseManager;
+import com.atlas.worker.lifecycle.InFlightTracker;
+import com.atlas.worker.metrics.WorkerMetrics;
 import com.atlas.worker.publisher.StepResultPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +14,8 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import java.net.InetAddress;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -29,14 +33,20 @@ public class StepCommandConsumer {
     private final LeaseManager leaseManager;
     private final StepExecutorRegistry executorRegistry;
     private final StepResultPublisher resultPublisher;
+    private final InFlightTracker inFlightTracker;
+    private final WorkerMetrics metrics;
     private final String workerId;
 
     public StepCommandConsumer(LeaseManager leaseManager,
                                StepExecutorRegistry executorRegistry,
-                               StepResultPublisher resultPublisher) {
+                               StepResultPublisher resultPublisher,
+                               InFlightTracker inFlightTracker,
+                               WorkerMetrics metrics) {
         this.leaseManager = leaseManager;
         this.executorRegistry = executorRegistry;
         this.resultPublisher = resultPublisher;
+        this.inFlightTracker = inFlightTracker;
+        this.metrics = metrics;
         this.workerId = resolveWorkerId();
     }
 
@@ -52,17 +62,27 @@ public class StepCommandConsumer {
 
         if (!leaseManager.acquireLease(command.stepExecutionId(), workerId, leaseTimeoutSeconds)) {
             log.info("Lease already held for stepExecutionId={}, skipping", command.stepExecutionId());
+            metrics.recordLeaseConflict();
             return;
         }
 
+        metrics.recordLeaseAcquired();
+        inFlightTracker.startTracking(command.stepExecutionId());
+        Instant start = Instant.now();
         try {
             StepExecutor executor = executorRegistry.getExecutor(command.stepType());
             StepResult result = executor.execute(command);
             resultPublisher.publish(result, command.tenantId());
 
+            Duration duration = Duration.between(start, Instant.now());
+            metrics.recordStepSuccess(command.stepType());
+            metrics.recordStepDuration(command.stepType(), duration);
+
             log.info("Step completed: stepExecutionId={} outcome={}", command.stepExecutionId(), result.outcome());
         } catch (Exception e) {
             log.error("Step execution failed: stepExecutionId={}", command.stepExecutionId(), e);
+
+            metrics.recordStepFailure(command.stepType());
 
             StepResult failedResult = StepResult.failure(
                     command.stepExecutionId(),
@@ -72,6 +92,7 @@ public class StepCommandConsumer {
             );
             resultPublisher.publish(failedResult, command.tenantId());
         } finally {
+            inFlightTracker.stopTracking(command.stepExecutionId());
             leaseManager.releaseLease(command.stepExecutionId(), workerId);
         }
     }
