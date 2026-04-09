@@ -1,0 +1,169 @@
+{
+  "name": "order-fulfillment",
+  "description": "E-commerce order fulfillment saga: validates order, reserves inventory, charges payment, creates shipment, and notifies customer. Supports compensation on failure.",
+  "version": 1,
+  "steps": [
+    {
+      "step_id": "validate-order",
+      "name": "Validate Order",
+      "type": "INTERNAL_COMMAND",
+      "executor": "validate-order-executor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "order_id":    { "type": "string" },
+          "customer_id": { "type": "string" },
+          "items":       { "type": "array" },
+          "failure_config": { "type": "object" }
+        },
+        "required": ["order_id", "customer_id", "items"]
+      },
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff": "EXPONENTIAL",
+        "initial_interval_ms": 1000,
+        "multiplier": 2.0,
+        "max_interval_ms": 10000
+      },
+      "timeout_ms": 30000
+    },
+    {
+      "step_id": "reserve-inventory",
+      "name": "Reserve Inventory",
+      "type": "INTERNAL_COMMAND",
+      "executor": "reserve-inventory-executor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string" },
+          "items":    { "type": "array" },
+          "failure_config": { "type": "object" }
+        },
+        "required": ["order_id", "items"]
+      },
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff": "EXPONENTIAL",
+        "initial_interval_ms": 1000,
+        "multiplier": 2.0,
+        "max_interval_ms": 10000
+      },
+      "timeout_ms": 30000
+    },
+    {
+      "step_id": "charge-payment",
+      "name": "Charge Payment",
+      "type": "INTERNAL_COMMAND",
+      "executor": "charge-payment-executor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "order_id":       { "type": "string" },
+          "customer_id":    { "type": "string" },
+          "amount_cents":   { "type": "integer" },
+          "currency":       { "type": "string" },
+          "failure_config": { "type": "object" }
+        },
+        "required": ["order_id", "customer_id", "amount_cents", "currency"]
+      },
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff": "EXPONENTIAL",
+        "initial_interval_ms": 2000,
+        "multiplier": 2.0,
+        "max_interval_ms": 15000
+      },
+      "timeout_ms": 45000
+    },
+    {
+      "step_id": "create-shipment",
+      "name": "Create Shipment",
+      "type": "INTERNAL_COMMAND",
+      "executor": "create-shipment-executor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "order_id":          { "type": "string" },
+          "shipping_address":  { "type": "object" },
+          "items":             { "type": "array" },
+          "failure_config":    { "type": "object" }
+        },
+        "required": ["order_id", "shipping_address", "items"]
+      },
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff": "EXPONENTIAL",
+        "initial_interval_ms": 2000,
+        "multiplier": 2.0,
+        "max_interval_ms": 15000
+      },
+      "timeout_ms": 60000
+    },
+    {
+      "step_id": "send-notification",
+      "name": "Send Notification",
+      "type": "INTERNAL_COMMAND",
+      "executor": "send-notification-executor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "order_id":    { "type": "string" },
+          "customer_id": { "type": "string" },
+          "channel":     { "type": "string", "enum": ["EMAIL", "SMS", "PUSH"] },
+          "failure_config": { "type": "object" }
+        },
+        "required": ["order_id", "customer_id", "channel"]
+      },
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff": "FIXED",
+        "initial_interval_ms": 2000
+      },
+      "timeout_ms": 20000
+    }
+  ],
+  "compensations": {
+    "reserve-inventory": {
+      "step_id": "release-inventory",
+      "name": "Release Inventory",
+      "type": "INTERNAL_COMMAND",
+      "executor": "release-inventory-executor",
+      "retry_policy": {
+        "max_attempts": 5,
+        "backoff": "EXPONENTIAL",
+        "initial_interval_ms": 1000,
+        "multiplier": 2.0,
+        "max_interval_ms": 30000
+      },
+      "timeout_ms": 30000
+    },
+    "charge-payment": {
+      "step_id": "refund-payment",
+      "name": "Refund Payment",
+      "type": "INTERNAL_COMMAND",
+      "executor": "refund-payment-executor",
+      "retry_policy": {
+        "max_attempts": 5,
+        "backoff": "EXPONENTIAL",
+        "initial_interval_ms": 2000,
+        "multiplier": 2.0,
+        "max_interval_ms": 30000
+      },
+      "timeout_ms": 45000
+    },
+    "create-shipment": {
+      "step_id": "cancel-shipment",
+      "name": "Cancel Shipment",
+      "type": "INTERNAL_COMMAND",
+      "executor": "cancel-shipment-executor",
+      "retry_policy": {
+        "max_attempts": 5,
+        "backoff": "EXPONENTIAL",
+        "initial_interval_ms": 2000,
+        "multiplier": 2.0,
+        "max_interval_ms": 30000
+      },
+      "timeout_ms": 30000
+    }
+  }
+}

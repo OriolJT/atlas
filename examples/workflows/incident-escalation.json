@@ -1,0 +1,91 @@
+{
+  "name": "incident-escalation",
+  "description": "Incident escalation workflow: registers incident, assigns on-call engineer, waits for acknowledgment (60s timeout), and escalates if not acknowledged.",
+  "version": 1,
+  "steps": [
+    {
+      "step_id": "register-incident",
+      "name": "Register Incident",
+      "type": "INTERNAL_COMMAND",
+      "executor": "register-incident-executor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "incident_id":  { "type": "string" },
+          "severity":     { "type": "string", "enum": ["P1", "P2", "P3", "P4"] },
+          "title":        { "type": "string" },
+          "description":  { "type": "string" },
+          "service":      { "type": "string" },
+          "failure_config": { "type": "object" }
+        },
+        "required": ["incident_id", "severity", "title", "service"]
+      },
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff": "FIXED",
+        "initial_interval_ms": 1000
+      },
+      "timeout_ms": 15000
+    },
+    {
+      "step_id": "assign-oncall",
+      "name": "Assign On-Call Engineer",
+      "type": "INTERNAL_COMMAND",
+      "executor": "assign-oncall-executor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "incident_id": { "type": "string" },
+          "severity":    { "type": "string" },
+          "service":     { "type": "string" },
+          "failure_config": { "type": "object" }
+        },
+        "required": ["incident_id", "severity", "service"]
+      },
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff": "FIXED",
+        "initial_interval_ms": 1000
+      },
+      "timeout_ms": 15000
+    },
+    {
+      "step_id": "wait-for-acknowledgment",
+      "name": "Wait for Acknowledgment",
+      "type": "EVENT_WAIT",
+      "event_name": "incident.acknowledged",
+      "timeout_ms": 60000,
+      "timeout_action": "CONTINUE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "incident_id": { "type": "string" }
+        },
+        "required": ["incident_id"]
+      }
+    },
+    {
+      "step_id": "escalate-if-timeout",
+      "name": "Escalate Incident",
+      "type": "INTERNAL_COMMAND",
+      "executor": "escalate-incident-executor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "incident_id":  { "type": "string" },
+          "severity":     { "type": "string" },
+          "acknowledged": { "type": "boolean" },
+          "failure_config": { "type": "object" }
+        },
+        "required": ["incident_id", "severity", "acknowledged"]
+      },
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff": "FIXED",
+        "initial_interval_ms": 1000
+      },
+      "timeout_ms": 15000
+    }
+  ],
+  "compensations": {}
+}
