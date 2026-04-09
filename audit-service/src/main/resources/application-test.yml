@@ -7,4 +7,4 @@ spring:
 
 atlas:
   jwt:
-    secret: dGVzdC1zZWNyZXQta2V5LXRoYXQtaXMtYXQtbGVhc3QtMjU2LWJpdHMtbG9uZy1mb3ItaHMyNTY=
+    secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256

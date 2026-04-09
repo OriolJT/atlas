@@ -7,7 +7,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 import javax.crypto.SecretKey;
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,7 +16,7 @@ public class JwtTokenParser {
     private final SecretKey signingKey;
 
     public JwtTokenParser(String secret) {
-        this.signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
+        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public AuthenticatedPrincipal parse(String token) {

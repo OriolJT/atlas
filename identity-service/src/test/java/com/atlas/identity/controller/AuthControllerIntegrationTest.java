@@ -9,6 +9,7 @@ import com.atlas.identity.dto.LogoutRequest;
 import com.atlas.identity.dto.RefreshTokenRequest;
 import com.atlas.identity.dto.TenantResponse;
 import com.atlas.identity.dto.UserResponse;
+import com.atlas.identity.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +17,15 @@ import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +38,9 @@ class AuthControllerIntegrationTest {
 
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     private UUID tenantId;
     private String userEmail;
@@ -46,11 +55,19 @@ class AuthControllerIntegrationTest {
         assertThat(tenantResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         tenantId = tenantResponse.getBody().tenantId();
 
+        // Generate a token to create the user (user endpoints now require authentication)
+        String setupToken = jwtTokenProvider.generateAccessToken(
+                UUID.randomUUID(), tenantId, List.of("TENANT_ADMIN"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(setupToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
         userEmail = "auth-user-" + uniqueId + "@example.com";
         userPassword = "SecurePass1";
         var userRequest = new CreateUserRequest(tenantId, userEmail, userPassword, "Auth", "User");
-        ResponseEntity<UserResponse> userResponse = restTemplate.postForEntity(
-                "/api/v1/users", userRequest, UserResponse.class);
+        ResponseEntity<UserResponse> userResponse = restTemplate.exchange(
+                "/api/v1/users", HttpMethod.POST,
+                new HttpEntity<>(userRequest, headers), UserResponse.class);
         assertThat(userResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 

@@ -22,9 +22,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AuditEventControllerIntegrationTest {
 
     private static final String TEST_JWT_SECRET =
-            "dGVzdC1zZWNyZXQta2V5LXRoYXQtaXMtYXQtbGVhc3QtMjU2LWJpdHMtbG9uZy1mb3ItaHMyNTY=";
+            "test-secret-key-that-is-at-least-256-bits-long-for-hs256";
 
     @Autowired
     private TestRestTemplate restTemplate;
@@ -126,7 +126,7 @@ class AuditEventControllerIntegrationTest {
     }
 
     private String generateTestToken(UUID tenantId) {
-        SecretKey key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(TEST_JWT_SECRET));
+        SecretKey key = Keys.hmacShaKeyFor(TEST_JWT_SECRET.getBytes(StandardCharsets.UTF_8));
         return Jwts.builder()
                 .subject(UUID.randomUUID().toString())
                 .claim("tenant_id", tenantId.toString())

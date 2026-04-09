@@ -18,6 +18,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.atlas.common.event.EventTypes;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,7 +31,7 @@ import java.util.UUID;
 public class StepResultProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(StepResultProcessor.class);
-    private static final String STEP_EXECUTE_TOPIC = "workflow.step.execute";
+    private static final String STEP_EXECUTE_TOPIC = EventTypes.TOPIC_STEP_EXECUTE;
     private static final long BASE_BACKOFF_MS = 1000;
     private static final long MAX_BACKOFF_MS = 60_000;
 
@@ -60,14 +62,13 @@ public class StepResultProcessor {
     @Transactional
     @SuppressWarnings("unchecked")
     public void process(Map<String, Object> resultPayload) {
-        UUID stepExecutionId = UUID.fromString((String) resultPayload.get("stepExecutionId"));
-        UUID executionId = UUID.fromString((String) resultPayload.get("executionId"));
+        UUID stepExecutionId = UUID.fromString((String) resultPayload.get("step_execution_id"));
         String outcome = (String) resultPayload.get("outcome");
-        int attemptCount = ((Number) resultPayload.get("attemptCount")).intValue();
+        int attemptCount = ((Number) resultPayload.get("attempt")).intValue();
         Map<String, Object> output = (Map<String, Object>) resultPayload.get("output");
         String error = (String) resultPayload.get("error");
-        Long delayMs = resultPayload.containsKey("delayMs")
-                ? ((Number) resultPayload.get("delayMs")).longValue() : null;
+        Long delayMs = resultPayload.containsKey("delay_ms")
+                ? ((Number) resultPayload.get("delay_ms")).longValue() : null;
 
         StepExecution step = stepExecutionRepository.findById(stepExecutionId).orElse(null);
         if (step == null) {
@@ -75,6 +76,8 @@ public class StepResultProcessor {
             return;
         }
 
+        // Derive executionId from the step entity (worker results may not include it)
+        UUID executionId = step.getExecutionId();
         WorkflowExecution execution = executionRepository.findById(executionId).orElse(null);
         if (execution == null) {
             log.warn("Workflow execution not found: {}", executionId);
@@ -165,12 +168,12 @@ public class StepResultProcessor {
 
             // Publish outbox event for next step
             Map<String, Object> payload = Map.of(
-                    "stepExecutionId", nextStep.getStepExecutionId().toString(),
-                    "executionId", execution.getExecutionId().toString(),
-                    "tenantId", execution.getTenantId().toString(),
-                    "stepName", nextStepName,
-                    "stepType", stepType,
-                    "stepIndex", nextStepIndex,
+                    "step_execution_id", nextStep.getStepExecutionId().toString(),
+                    "execution_id", execution.getExecutionId().toString(),
+                    "tenant_id", execution.getTenantId().toString(),
+                    "step_name", nextStepName,
+                    "step_type", stepType,
+                    "step_index", nextStepIndex,
                     "input", nextInput
             );
 

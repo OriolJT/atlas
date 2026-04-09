@@ -7,6 +7,7 @@ import com.atlas.identity.dto.LoginRequest;
 import com.atlas.identity.dto.LoginResponse;
 import com.atlas.identity.dto.TenantResponse;
 import com.atlas.identity.dto.UserResponse;
+import com.atlas.identity.security.JwtTokenProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -17,9 +18,11 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +36,18 @@ class TenantScopingIntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    private HttpHeaders authHeaders(UUID tenantId) {
+        String token = jwtTokenProvider.generateAccessToken(
+                UUID.randomUUID(), tenantId, List.of("TENANT_ADMIN"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return headers;
+    }
+
     @Test
     void authenticatedAsTenantA_cannotReadTenantBUser() {
         // Create tenant A and a user in it
@@ -43,7 +58,8 @@ class TenantScopingIntegrationTest {
 
         String emailA = "user-a-" + uniqueA + "@example.com";
         var userARequest = new CreateUserRequest(tenantA.tenantId(), emailA, "SecurePass1", "User", "A");
-        restTemplate.postForEntity("/api/v1/users", userARequest, UserResponse.class);
+        restTemplate.exchange("/api/v1/users", HttpMethod.POST,
+                new HttpEntity<>(userARequest, authHeaders(tenantA.tenantId())), UserResponse.class);
 
         // Create tenant B and a user in it
         String uniqueB = UUID.randomUUID().toString().substring(0, 8);
@@ -53,7 +69,8 @@ class TenantScopingIntegrationTest {
 
         String emailB = "user-b-" + uniqueB + "@example.com";
         var userBRequest = new CreateUserRequest(tenantB.tenantId(), emailB, "SecurePass1", "User", "B");
-        UserResponse userB = restTemplate.postForEntity("/api/v1/users", userBRequest, UserResponse.class).getBody();
+        UserResponse userB = restTemplate.exchange("/api/v1/users", HttpMethod.POST,
+                new HttpEntity<>(userBRequest, authHeaders(tenantB.tenantId())), UserResponse.class).getBody();
         assertThat(userB).isNotNull();
 
         // Login as tenant A's user
@@ -83,7 +100,8 @@ class TenantScopingIntegrationTest {
 
         String email = "user-own-" + unique + "@example.com";
         var userRequest = new CreateUserRequest(tenant.tenantId(), email, "SecurePass1", "Own", "User");
-        UserResponse createdUser = restTemplate.postForEntity("/api/v1/users", userRequest, UserResponse.class).getBody();
+        UserResponse createdUser = restTemplate.exchange("/api/v1/users", HttpMethod.POST,
+                new HttpEntity<>(userRequest, authHeaders(tenant.tenantId())), UserResponse.class).getBody();
         assertThat(createdUser).isNotNull();
 
         // Login as that user

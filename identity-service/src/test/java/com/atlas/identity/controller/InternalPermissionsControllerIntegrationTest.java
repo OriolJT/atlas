@@ -7,16 +7,22 @@ import com.atlas.identity.dto.CreateTenantRequest;
 import com.atlas.identity.dto.PermissionMappingResponse;
 import com.atlas.identity.dto.RoleResponse;
 import com.atlas.identity.dto.TenantResponse;
+import com.atlas.identity.security.JwtTokenProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -31,6 +37,18 @@ class InternalPermissionsControllerIntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    private HttpHeaders authHeaders(UUID tenantId) {
+        String token = jwtTokenProvider.generateAccessToken(
+                UUID.randomUUID(), tenantId, List.of("TENANT_ADMIN"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return headers;
+    }
+
     @Test
     void getPermissionMappings_withRolesAndPermissions_returnsMappings() {
         // Create a tenant
@@ -40,17 +58,21 @@ class InternalPermissionsControllerIntegrationTest {
         assertThat(tenantResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         UUID tenantId = tenantResponse.getBody().tenantId();
 
+        HttpHeaders headers = authHeaders(tenantId);
+
         // Create a role and assign permissions
         var roleRequest = new CreateRoleRequest(tenantId, "operator", "Operator role");
-        ResponseEntity<RoleResponse> roleResponse = restTemplate.postForEntity(
-                "/api/v1/roles", roleRequest, RoleResponse.class);
+        ResponseEntity<RoleResponse> roleResponse = restTemplate.exchange(
+                "/api/v1/roles", HttpMethod.POST,
+                new HttpEntity<>(roleRequest, headers), RoleResponse.class);
         assertThat(roleResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         UUID roleId = roleResponse.getBody().roleId();
 
         var assignRequest = new AssignPermissionsRequest(Set.of("workflow.read", "workflow.execute"));
-        restTemplate.postForEntity("/api/v1/roles/" + roleId + "/permissions", assignRequest, RoleResponse.class);
+        restTemplate.exchange("/api/v1/roles/" + roleId + "/permissions", HttpMethod.POST,
+                new HttpEntity<>(assignRequest, headers), RoleResponse.class);
 
-        // Query internal permissions endpoint
+        // Query internal permissions endpoint (permitAll)
         ResponseEntity<PermissionMappingResponse> response = restTemplate.getForEntity(
                 "/api/v1/internal/permissions?tenantId=" + tenantId, PermissionMappingResponse.class);
 

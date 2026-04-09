@@ -86,10 +86,10 @@ public class TimeoutDetector {
         }
 
         Map<String, Object> failedResult = Map.of(
-                "stepExecutionId", step.getStepExecutionId().toString(),
-                "executionId", step.getExecutionId().toString(),
+                "step_execution_id", step.getStepExecutionId().toString(),
+                "execution_id", step.getExecutionId().toString(),
                 "outcome", "FAILED",
-                "attemptCount", step.getAttemptCount(),
+                "attempt", step.getAttemptCount(),
                 "error", "Step timed out after " + step.getTimeoutMs() + "ms"
         );
 

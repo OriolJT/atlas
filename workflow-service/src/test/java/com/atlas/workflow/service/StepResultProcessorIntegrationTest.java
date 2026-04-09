@@ -72,10 +72,10 @@ class StepResultProcessorIntegrationTest {
         StepExecution step = createStep(execution, "step2", 1, "HTTP_CALL", 3, StepStatus.RUNNING);
 
         Map<String, Object> result = Map.of(
-                "stepExecutionId", step.getStepExecutionId().toString(),
-                "executionId", execution.getExecutionId().toString(),
+                "step_execution_id", step.getStepExecutionId().toString(),
+                "execution_id", execution.getExecutionId().toString(),
                 "outcome", "SUCCEEDED",
-                "attemptCount", step.getAttemptCount(),
+                "attempt", step.getAttemptCount(),
                 "output", Map.of("result", "done")
         );
 
@@ -97,10 +97,10 @@ class StepResultProcessorIntegrationTest {
         StepExecution step = createStep(execution, "step1", 0, "HTTP_CALL", 3, StepStatus.RUNNING);
 
         Map<String, Object> result = Map.of(
-                "stepExecutionId", step.getStepExecutionId().toString(),
-                "executionId", execution.getExecutionId().toString(),
+                "step_execution_id", step.getStepExecutionId().toString(),
+                "execution_id", execution.getExecutionId().toString(),
                 "outcome", "SUCCEEDED",
-                "attemptCount", step.getAttemptCount(),
+                "attempt", step.getAttemptCount(),
                 "output", Map.of("intermediateResult", "value1")
         );
 
@@ -138,10 +138,10 @@ class StepResultProcessorIntegrationTest {
         StepExecution step = createStep(execution, "step1", 0, "HTTP_CALL", 3, StepStatus.RUNNING);
 
         Map<String, Object> result = Map.of(
-                "stepExecutionId", step.getStepExecutionId().toString(),
-                "executionId", execution.getExecutionId().toString(),
+                "step_execution_id", step.getStepExecutionId().toString(),
+                "execution_id", execution.getExecutionId().toString(),
                 "outcome", "FAILED",
-                "attemptCount", step.getAttemptCount(),
+                "attempt", step.getAttemptCount(),
                 "error", "Connection timeout"
         );
 
@@ -164,10 +164,10 @@ class StepResultProcessorIntegrationTest {
 
         // Process first result
         Map<String, Object> result = Map.of(
-                "stepExecutionId", step.getStepExecutionId().toString(),
-                "executionId", execution.getExecutionId().toString(),
+                "step_execution_id", step.getStepExecutionId().toString(),
+                "execution_id", execution.getExecutionId().toString(),
                 "outcome", "SUCCEEDED",
-                "attemptCount", step.getAttemptCount(),
+                "attempt", step.getAttemptCount(),
                 "output", Map.of("result", "first")
         );
         stepResultProcessor.process(result);
@@ -177,10 +177,10 @@ class StepResultProcessorIntegrationTest {
 
         // Process duplicate with same attempt count — step is now SUCCEEDED, so it should be ignored
         Map<String, Object> duplicate = Map.of(
-                "stepExecutionId", step.getStepExecutionId().toString(),
-                "executionId", execution.getExecutionId().toString(),
+                "step_execution_id", step.getStepExecutionId().toString(),
+                "execution_id", execution.getExecutionId().toString(),
                 "outcome", "SUCCEEDED",
-                "attemptCount", step.getAttemptCount(),
+                "attempt", step.getAttemptCount(),
                 "output", Map.of("result", "duplicate")
         );
         stepResultProcessor.process(duplicate);

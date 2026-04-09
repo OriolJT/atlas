@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.atlas.common.event.EventTypes;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -25,7 +27,7 @@ import java.util.Map;
 public class CompensationEngine {
 
     private static final Logger log = LoggerFactory.getLogger(CompensationEngine.class);
-    private static final String STEP_EXECUTE_TOPIC = "workflow.step.execute";
+    private static final String STEP_EXECUTE_TOPIC = EventTypes.TOPIC_STEP_EXECUTE;
 
     private final WorkflowExecutionRepository executionRepository;
     private final WorkflowDefinitionRepository definitionRepository;
@@ -114,14 +116,14 @@ public class CompensationEngine {
 
             // Publish execute command via outbox
             Map<String, Object> payload = Map.of(
-                    "stepExecutionId", compensationStep.getStepExecutionId().toString(),
-                    "executionId", execution.getExecutionId().toString(),
-                    "tenantId", execution.getTenantId().toString(),
-                    "stepName", compensationStepName,
-                    "stepType", compensationType,
-                    "stepIndex", compensationIndex,
+                    "step_execution_id", compensationStep.getStepExecutionId().toString(),
+                    "execution_id", execution.getExecutionId().toString(),
+                    "tenant_id", execution.getTenantId().toString(),
+                    "step_name", compensationStepName,
+                    "step_type", compensationType,
+                    "step_index", compensationIndex,
                     "input", compensationInput,
-                    "isCompensation", true
+                    "is_compensation", true
             );
 
             OutboxEvent outboxEvent = OutboxEvent.create(

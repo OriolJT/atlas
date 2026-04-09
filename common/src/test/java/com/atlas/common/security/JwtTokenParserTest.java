@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -16,12 +15,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JwtTokenParserTest {
 
-    // 32-byte (256-bit) secret, base64-encoded for convenience in tests
-    private static final String SECRET = Base64.getEncoder().encodeToString(
-            "test-secret-key-that-is-long-enough-32b".getBytes(StandardCharsets.UTF_8));
+    // Raw UTF-8 secret (must be at least 32 bytes for HMAC-SHA256)
+    private static final String SECRET = "test-secret-key-that-is-long-enough-32b";
 
-    private static final String WRONG_SECRET = Base64.getEncoder().encodeToString(
-            "wrong-secret-key-that-is-long-enough-32".getBytes(StandardCharsets.UTF_8));
+    private static final String WRONG_SECRET = "wrong-secret-key-that-is-long-enough-32";
 
     private JwtTokenParser parser;
     private SecretKey signingKey;
@@ -29,7 +26,7 @@ class JwtTokenParserTest {
     @BeforeEach
     void setUp() {
         parser = new JwtTokenParser(SECRET);
-        signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET));
+        signingKey = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     }
 
     private String buildToken(UUID userId, UUID tenantId, List<String> roles, long expiryMs) {
@@ -101,7 +98,7 @@ class JwtTokenParserTest {
 
     @Test
     void rejectTokenSignedWithWrongKey() {
-        SecretKey wrongKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(WRONG_SECRET));
+        SecretKey wrongKey = Keys.hmacShaKeyFor(WRONG_SECRET.getBytes(StandardCharsets.UTF_8));
         String token = Jwts.builder()
                 .subject(UUID.randomUUID().toString())
                 .claim("tenant_id", UUID.randomUUID().toString())

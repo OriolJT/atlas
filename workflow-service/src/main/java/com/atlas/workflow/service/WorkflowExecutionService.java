@@ -22,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.atlas.common.event.EventTypes;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -33,7 +35,7 @@ import java.util.UUID;
 @Service
 public class WorkflowExecutionService {
 
-    private static final String STEP_EXECUTE_TOPIC = "workflow.step.execute";
+    private static final String STEP_EXECUTE_TOPIC = EventTypes.TOPIC_STEP_EXECUTE;
 
     private final WorkflowExecutionRepository executionRepository;
     private final WorkflowDefinitionRepository definitionRepository;
@@ -101,12 +103,12 @@ public class WorkflowExecutionService {
 
             // Write outbox event for step.execute command
             Map<String, Object> payload = Map.of(
-                    "stepExecutionId", stepExecution.getStepExecutionId().toString(),
-                    "executionId", execution.getExecutionId().toString(),
-                    "tenantId", tenantId.toString(),
-                    "stepName", stepName,
-                    "stepType", stepType,
-                    "stepIndex", 0,
+                    "step_execution_id", stepExecution.getStepExecutionId().toString(),
+                    "execution_id", execution.getExecutionId().toString(),
+                    "tenant_id", tenantId.toString(),
+                    "step_name", stepName,
+                    "step_type", stepType,
+                    "step_index", 0,
                     "input", input
             );
 
@@ -156,10 +158,10 @@ public class WorkflowExecutionService {
 
         // Build a synthetic result payload and delegate to StepResultProcessor
         Map<String, Object> resultPayload = new HashMap<>();
-        resultPayload.put("stepExecutionId", waitingStep.getStepExecutionId().toString());
-        resultPayload.put("executionId", executionId.toString());
+        resultPayload.put("step_execution_id", waitingStep.getStepExecutionId().toString());
+        resultPayload.put("execution_id", executionId.toString());
         resultPayload.put("outcome", "SUCCEEDED");
-        resultPayload.put("attemptCount", waitingStep.getAttemptCount());
+        resultPayload.put("attempt", waitingStep.getAttemptCount());
         resultPayload.put("output", request.payload() != null ? request.payload() : Map.of());
         resultPayload.put("error", null);
 

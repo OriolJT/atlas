@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.atlas.common.event.EventTypes;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,7 +24,7 @@ import java.util.UUID;
 public class DeadLetterService {
 
     private static final Logger log = LoggerFactory.getLogger(DeadLetterService.class);
-    private static final String STEP_EXECUTE_TOPIC = "workflow.step.execute";
+    private static final String STEP_EXECUTE_TOPIC = EventTypes.TOPIC_STEP_EXECUTE;
 
     private final DeadLetterItemRepository deadLetterItemRepository;
     private final StepExecutionRepository stepExecutionRepository;
@@ -67,12 +69,12 @@ public class DeadLetterService {
 
         // Publish outbox event to re-execute the step
         Map<String, Object> payload = Map.of(
-                "stepExecutionId", step.getStepExecutionId().toString(),
-                "executionId", step.getExecutionId().toString(),
-                "tenantId", step.getTenantId().toString(),
-                "stepName", step.getStepName(),
-                "stepType", step.getStepType(),
-                "stepIndex", step.getStepIndex(),
+                "step_execution_id", step.getStepExecutionId().toString(),
+                "execution_id", step.getExecutionId().toString(),
+                "tenant_id", step.getTenantId().toString(),
+                "step_name", step.getStepName(),
+                "step_type", step.getStepType(),
+                "step_index", step.getStepIndex(),
                 "input", step.getInputJson()
         );
 
