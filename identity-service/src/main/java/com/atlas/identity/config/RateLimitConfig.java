@@ -1,6 +1,5 @@
 package com.atlas.identity.config;
 
-import com.atlas.common.ratelimit.DefaultTenantQuotaResolver;
 import com.atlas.common.ratelimit.RateLimitFilter;
 import com.atlas.common.ratelimit.RateLimitProperties;
 import com.atlas.common.ratelimit.RateLimiter;
@@ -20,11 +19,6 @@ public class RateLimitConfig {
     @Bean
     public RateLimiter rateLimiter(StringRedisTemplate redisTemplate) {
         return new RedisRateLimiter(redisTemplate);
-    }
-
-    @Bean
-    public TenantQuotaResolver tenantQuotaResolver() {
-        return new DefaultTenantQuotaResolver();
     }
 
     @Bean
