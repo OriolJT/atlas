@@ -41,7 +41,7 @@ public class WorkflowDefinition {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "steps_json", columnDefinition = "jsonb")
-    private Map<String, Object> stepsJson;
+    private Object stepsJson;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "compensations_json", columnDefinition = "jsonb")
@@ -61,7 +61,7 @@ public class WorkflowDefinition {
     }
 
     private WorkflowDefinition(UUID tenantId, String name, int version,
-                                Map<String, Object> stepsJson,
+                                Object stepsJson,
                                 Map<String, Object> compensationsJson,
                                 String triggerType) {
         this.definitionId = UUID.randomUUID();
@@ -76,7 +76,7 @@ public class WorkflowDefinition {
     }
 
     public static WorkflowDefinition create(UUID tenantId, String name, int version,
-                                             Map<String, Object> stepsJson,
+                                             Object stepsJson,
                                              Map<String, Object> compensationsJson,
                                              String triggerType) {
         return new WorkflowDefinition(tenantId, name, version, stepsJson, compensationsJson, triggerType);
@@ -111,7 +111,7 @@ public class WorkflowDefinition {
         return status;
     }
 
-    public Map<String, Object> getStepsJson() {
+    public Object getStepsJson() {
         return stepsJson;
     }
 

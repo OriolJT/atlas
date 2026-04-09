@@ -14,9 +14,9 @@ public record CreateDefinitionRequest(
         @Min(value = 1, message = "version must be at least 1")
         Integer version,
 
-        Map<String, Object> stepsJson,
+        Object steps,
 
-        Map<String, Object> compensationsJson,
+        Map<String, Object> compensations,
 
         String triggerType
 ) {}

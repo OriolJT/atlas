@@ -13,7 +13,7 @@ public record DefinitionResponse(
         String name,
         int version,
         DefinitionStatus status,
-        Map<String, Object> stepsJson,
+        Object stepsJson,
         Map<String, Object> compensationsJson,
         String triggerType,
         Instant createdAt,

@@ -35,8 +35,8 @@ public class WorkflowDefinitionService {
                 tenantId,
                 request.name(),
                 request.version(),
-                request.stepsJson(),
-                request.compensationsJson(),
+                request.steps(),
+                request.compensations(),
                 request.triggerType()
         );
 

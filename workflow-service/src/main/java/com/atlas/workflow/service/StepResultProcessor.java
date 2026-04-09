@@ -24,6 +24,7 @@ import com.atlas.common.event.EventTypes;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -134,7 +135,7 @@ public class StepResultProcessor {
                 .orElseThrow(() -> new IllegalStateException(
                         "Definition not found: " + execution.getDefinitionId()));
 
-        List<Map.Entry<String, Object>> steps = parseSteps(definition.getStepsJson());
+        List<Map<String, Object>> steps = parseSteps(definition.getStepsJson());
         int nextStepIndex = step.getStepIndex() + 1;
 
         if (nextStepIndex >= steps.size()) {
@@ -145,15 +146,12 @@ public class StepResultProcessor {
             log.info("Execution {} completed successfully", execution.getExecutionId());
         } else {
             // Create next step
-            Map.Entry<String, Object> nextStepEntry = steps.get(nextStepIndex);
-            String nextStepName = nextStepEntry.getKey();
-            @SuppressWarnings("unchecked")
-            Map<String, Object> nextStepConfig = (Map<String, Object>) nextStepEntry.getValue();
-            String stepType = (String) nextStepConfig.getOrDefault("type", "UNKNOWN");
-            int maxAttempts = nextStepConfig.containsKey("maxAttempts")
-                    ? ((Number) nextStepConfig.get("maxAttempts")).intValue() : 3;
-            Long timeoutMs = nextStepConfig.containsKey("timeoutMs")
-                    ? ((Number) nextStepConfig.get("timeoutMs")).longValue() : null;
+            Map<String, Object> nextStepDef = steps.get(nextStepIndex);
+            String nextStepName = (String) nextStepDef.getOrDefault("name", "step-" + nextStepIndex);
+            String stepType = (String) nextStepDef.getOrDefault("type", "UNKNOWN");
+            int maxAttempts = extractMaxAttempts(nextStepDef);
+            Long timeoutMs = nextStepDef.containsKey("timeout_ms")
+                    ? ((Number) nextStepDef.get("timeout_ms")).longValue() : null;
 
             // Output of current step becomes input of next step
             Map<String, Object> nextInput = output != null ? output : Map.of();
@@ -286,12 +284,43 @@ public class StepResultProcessor {
         return Math.min(backoff, MAX_BACKOFF_MS);
     }
 
-    private List<Map.Entry<String, Object>> parseSteps(Map<String, Object> stepsJson) {
-        if (stepsJson == null || stepsJson.isEmpty()) {
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> parseSteps(Object stepsJson) {
+        if (stepsJson == null) {
             return List.of();
         }
-        List<Map.Entry<String, Object>> entries = new ArrayList<>(stepsJson.entrySet());
-        entries.sort(Comparator.comparing(Map.Entry::getKey));
-        return entries;
+        if (stepsJson instanceof List<?> list) {
+            return list.stream()
+                    .map(item -> (Map<String, Object>) item)
+                    .toList();
+        }
+        if (stepsJson instanceof Map<?, ?> map) {
+            // Legacy Map format — convert to List sorted by key
+            List<Map.Entry<String, Object>> entries = new ArrayList<>(((Map<String, Object>) map).entrySet());
+            entries.sort(Comparator.comparing(Map.Entry::getKey));
+            return entries.stream()
+                    .map(e -> {
+                        Map<String, Object> stepDef = new HashMap<>((Map<String, Object>) e.getValue());
+                        stepDef.putIfAbsent("name", e.getKey());
+                        return stepDef;
+                    })
+                    .toList();
+        }
+        return List.of();
+    }
+
+    private int extractMaxAttempts(Map<String, Object> stepDef) {
+        if (stepDef.containsKey("retry_policy")) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> retryPolicy = (Map<String, Object>) stepDef.get("retry_policy");
+            if (retryPolicy != null && retryPolicy.containsKey("max_attempts")) {
+                return ((Number) retryPolicy.get("max_attempts")).intValue();
+            }
+        }
+        // Fallback: support legacy "maxAttempts" key
+        if (stepDef.containsKey("maxAttempts")) {
+            return ((Number) stepDef.get("maxAttempts")).intValue();
+        }
+        return 1;
     }
 }
