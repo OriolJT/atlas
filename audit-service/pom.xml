@@ -82,6 +82,26 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- OpenAPI / Swagger -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+
+        <!-- Distributed Tracing (OpenTelemetry) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-opentelemetry</artifactId>
+        </dependency>
+
+        <!-- JSON Structured Logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>9.0</version>
+        </dependency>
+
         <!-- Jackson 2 bridge (required by JJWT which still uses Jackson 2) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -145,6 +165,7 @@
     </dependencies>
 
     <build>
+        <finalName>audit-service</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
