@@ -1,0 +1,174 @@
+{
+  "uid": "atlas-workflow-executions",
+  "title": "Atlas — Workflow Executions",
+  "tags": ["atlas", "workflows"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "gauge",
+      "title": "Active Executions",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 6 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "atlas_workflow_executions_active",
+          "legendFormat": "Active",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Executions Started / Completed / Failed",
+      "gridPos": { "x": 6, "y": 0, "w": 18, "h": 8 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "lineWidth": 2 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Failed" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Completed" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+            ]
+          }
+        ]
+      },
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "expr": "rate(atlas_workflow_execution_started_total[2m])",
+          "legendFormat": "Started",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(atlas_workflow_execution_completed_total[2m])",
+          "legendFormat": "Completed",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(atlas_workflow_execution_failed_total[2m])",
+          "legendFormat": "Failed",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Execution Failure Rate",
+      "gridPos": { "x": 0, "y": 6, "w": 6, "h": 4 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.05 },
+              { "color": "red", "value": 0.1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "rate(atlas_workflow_execution_failed_total[5m]) / rate(atlas_workflow_execution_started_total[5m])",
+          "legendFormat": "Failure rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Average Step Duration",
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "lineWidth": 2 }
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "expr": "rate(atlas_workflow_step_duration_seconds_sum[2m]) / rate(atlas_workflow_step_duration_seconds_count[2m])",
+          "legendFormat": "Avg step duration",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(atlas_workflow_step_duration_seconds_bucket[2m]))",
+          "legendFormat": "p95 step duration",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Compensation Rate",
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "lineWidth": 2 }
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "expr": "rate(atlas_workflow_compensation_triggered_total[2m])",
+          "legendFormat": "Compensations triggered",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(atlas_workflow_compensation_completed_total[2m])",
+          "legendFormat": "Compensations completed",
+          "refId": "B"
+        }
+      ]
+    }
+  ]
+}

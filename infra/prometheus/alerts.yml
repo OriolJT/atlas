@@ -1,0 +1,50 @@
+groups:
+  - name: atlas-alerts
+    rules:
+      - alert: KafkaConsumerLagHigh
+        expr: kafka_consumer_lag > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag high for {{ $labels.group }}"
+          description: "Consumer group {{ $labels.group }} has lag {{ $value }} on topic {{ $labels.topic }}"
+
+      - alert: DeadLetterQueueGrowing
+        expr: increase(atlas_workflow_deadletter_count[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dead-letter queue is growing"
+          description: "Dead-letter queue received {{ $value }} new messages in the last 5 minutes"
+
+      - alert: ExecutionFailureRateHigh
+        expr: >
+          rate(atlas_workflow_execution_failed_total[5m])
+          /
+          rate(atlas_workflow_execution_started_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Workflow execution failure rate above 10%"
+          description: "Failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Prometheus target {{ $labels.job }} ({{ $labels.instance }}) has been unreachable for more than 30 seconds"
+
+      - alert: OutboxAccumulating
+        expr: atlas_outbox_unpublished_count > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox unpublished message count is high"
+          description: "Outbox has {{ $value }} unpublished messages for more than 5 minutes — possible relay failure"

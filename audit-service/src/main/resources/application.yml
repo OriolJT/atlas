@@ -1,0 +1,54 @@
+server:
+  port: ${ATLAS_AUDIT_PORT:8084}
+
+spring:
+  application:
+    name: audit-service
+  datasource:
+    url: jdbc:postgresql://${ATLAS_DB_HOST:localhost}:${ATLAS_DB_PORT:5432}/${ATLAS_DB_NAME:atlas}?currentSchema=audit
+    username: ${ATLAS_DB_USER:atlas}
+    password: ${ATLAS_DB_PASSWORD:atlas}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: audit
+        format_sql: true
+    open-in-view: false
+  flyway:
+    schemas: audit
+    default-schema: audit
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${ATLAS_KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+    consumer:
+      group-id: audit-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "com.atlas.*"
+
+atlas:
+  jwt:
+    secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: audit-service
