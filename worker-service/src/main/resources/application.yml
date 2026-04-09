@@ -1,0 +1,39 @@
+server:
+  port: ${ATLAS_WORKER_PORT:8083}
+spring:
+  application:
+    name: worker-service
+  kafka:
+    bootstrap-servers: ${ATLAS_KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      group-id: worker-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "com.atlas.*,java.util"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+  data:
+    redis:
+      host: ${ATLAS_REDIS_HOST:localhost}
+      port: ${ATLAS_REDIS_PORT:6379}
+atlas:
+  jwt:
+    secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
+  worker:
+    concurrency: ${ATLAS_WORKER_CONCURRENCY:4}
+    drain-timeout-seconds: ${ATLAS_WORKER_DRAIN_TIMEOUT_S:30}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: worker-service
