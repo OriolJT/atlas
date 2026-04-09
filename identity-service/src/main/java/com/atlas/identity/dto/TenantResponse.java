@@ -10,6 +10,10 @@ public record TenantResponse(
         String name,
         String slug,
         String status,
+        int maxWorkflowDefinitions,
+        int maxExecutionsPerMinute,
+        int maxConcurrentExecutions,
+        int maxApiRequestsPerMinute,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -19,6 +23,10 @@ public record TenantResponse(
                 tenant.getName(),
                 tenant.getSlug(),
                 tenant.getStatus().name(),
+                tenant.getMaxWorkflowDefinitions(),
+                tenant.getMaxExecutionsPerMinute(),
+                tenant.getMaxConcurrentExecutions(),
+                tenant.getMaxApiRequestsPerMinute(),
                 tenant.getCreatedAt(),
                 tenant.getUpdatedAt());
     }

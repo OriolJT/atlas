@@ -34,6 +34,18 @@ public class Tenant {
     @Column(name = "status", nullable = false, length = 50)
     private Status status;
 
+    @Column(name = "max_workflow_definitions", nullable = false)
+    private int maxWorkflowDefinitions = 100;
+
+    @Column(name = "max_executions_per_minute", nullable = false)
+    private int maxExecutionsPerMinute = 60;
+
+    @Column(name = "max_concurrent_executions", nullable = false)
+    private int maxConcurrentExecutions = 10;
+
+    @Column(name = "max_api_requests_per_minute", nullable = false)
+    private int maxApiRequestsPerMinute = 600;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -93,5 +105,21 @@ public class Tenant {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public int getMaxWorkflowDefinitions() {
+        return maxWorkflowDefinitions;
+    }
+
+    public int getMaxExecutionsPerMinute() {
+        return maxExecutionsPerMinute;
+    }
+
+    public int getMaxConcurrentExecutions() {
+        return maxConcurrentExecutions;
+    }
+
+    public int getMaxApiRequestsPerMinute() {
+        return maxApiRequestsPerMinute;
     }
 }
