@@ -95,11 +95,22 @@ public class StepResultProcessor {
             return;
         }
 
-        // Deduplication: check step_execution_id + attempt_count
-        if (step.getAttemptCount() != attemptCount) {
-            log.info("Duplicate result ignored for step {} (expected attempt {}, got {})",
-                    stepExecutionId, step.getAttemptCount(), attemptCount);
+        // Deduplication: only process if step hasn't already been completed
+        if (step.getStatus() == StepStatus.SUCCEEDED || step.getStatus() == StepStatus.DEAD_LETTERED
+                || step.getStatus() == StepStatus.COMPENSATED) {
+            log.info("Duplicate result ignored for step {} (already in terminal status {})",
+                    stepExecutionId, step.getStatus());
             return;
+        }
+
+        // Transition step to RUNNING if still PENDING/LEASED (worker executed it)
+        if (step.getStatus() == StepStatus.PENDING) {
+            step.transitionTo(StepStatus.LEASED);
+            step.transitionTo(StepStatus.RUNNING);
+            stepExecutionRepository.save(step);
+        } else if (step.getStatus() == StepStatus.LEASED) {
+            step.transitionTo(StepStatus.RUNNING);
+            stepExecutionRepository.save(step);
         }
 
         // Only process results for steps in RUNNING or WAITING status
