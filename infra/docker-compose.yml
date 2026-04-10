@@ -226,6 +226,21 @@ services:
       start_period: 30s
     profiles: ["app"]
 
+  admin-console:
+    build:
+      context: ../admin-console
+      dockerfile: Dockerfile
+    ports:
+      - "3001:80"
+    depends_on:
+      identity-service:
+        condition: service_healthy
+      workflow-service:
+        condition: service_healthy
+      audit-service:
+        condition: service_healthy
+    profiles: ["app"]
+
 volumes:
   postgres_data:
   kafka_data:
