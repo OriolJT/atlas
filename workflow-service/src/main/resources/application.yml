@@ -50,6 +50,10 @@ atlas:
   rate-limit:
     requests-per-minute: 600
     burst-size: 100
+  grpc:
+    server:
+      enabled: ${ATLAS_GRPC_SERVER_ENABLED:false}
+      port: ${ATLAS_GRPC_SERVER_PORT:9090}
 
 management:
   endpoints:

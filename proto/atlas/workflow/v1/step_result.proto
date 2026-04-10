@@ -1,0 +1,36 @@
+syntax = "proto3";
+package atlas.workflow.v1;
+
+option java_multiple_files = true;
+option java_package = "com.atlas.grpc.workflow.v1";
+option java_outer_classname = "StepResultProto";
+
+service StepResultService {
+  rpc ReportStepResult(StepResultRequest) returns (StepResultResponse);
+  rpc ReportWorkerHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message StepResultRequest {
+  string step_execution_id = 1;
+  string execution_id = 2;
+  string tenant_id = 3;
+  string outcome = 4;  // SUCCEEDED, FAILED, DELAY_REQUESTED, WAITING
+  int32 attempt = 5;
+  string output_json = 6;
+  string error = 7;
+  bool non_retryable = 8;
+}
+
+message StepResultResponse {
+  bool accepted = 1;
+  string message = 2;
+}
+
+message HeartbeatRequest {
+  string worker_id = 1;
+  string step_execution_id = 2;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+}

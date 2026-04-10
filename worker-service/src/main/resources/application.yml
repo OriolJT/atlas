@@ -32,6 +32,11 @@ atlas:
   worker:
     concurrency: ${ATLAS_WORKER_CONCURRENCY:4}
     drain-timeout-seconds: ${ATLAS_WORKER_DRAIN_TIMEOUT_S:30}
+    result-transport: ${ATLAS_WORKER_RESULT_TRANSPORT:kafka}  # kafka or grpc
+  grpc:
+    client:
+      workflow-host: ${ATLAS_GRPC_WORKFLOW_HOST:localhost}
+      workflow-port: ${ATLAS_GRPC_WORKFLOW_PORT:9090}
 management:
   endpoints:
     web:
