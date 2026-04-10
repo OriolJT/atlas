@@ -38,6 +38,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/.well-known/**").permitAll()
                         .requestMatchers("/api/v1/internal/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/tenants").permitAll()
                         .requestMatchers("/api/v1/service-accounts", "/api/v1/api-keys").authenticated()
