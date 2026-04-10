@@ -52,15 +52,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Java 25
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '25'
-          cache: 'maven'
-      - name: Build JARs
-        run: mvn package -DskipTests -q
-      - name: Build Docker images
+      - name: Build Docker images (multi-stage, builds from source)
         run: |
           docker build --target identity -t atlas-identity-service:latest .
           docker build --target workflow -t atlas-workflow-service:latest .

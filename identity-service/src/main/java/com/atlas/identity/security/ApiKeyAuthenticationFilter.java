@@ -1,5 +1,6 @@
 package com.atlas.identity.security;
 
+import com.atlas.identity.domain.ApiKey;
 import com.atlas.identity.repository.ApiKeyRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,14 +18,19 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String API_KEY_HEADER = "X-API-Key";
+    private static final long CACHE_TTL_MS = 60_000;
 
     private final ApiKeyRepository apiKeyRepository;
     private final TenantContext tenantContext;
+    private final Map<String, CachedApiKey> apiKeyCache = new ConcurrentHashMap<>();
 
     public ApiKeyAuthenticationFilter(ApiKeyRepository apiKeyRepository, TenantContext tenantContext) {
         this.apiKeyRepository = apiKeyRepository;
@@ -43,7 +49,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String keyHash = hashKey(apiKey);
-        var found = apiKeyRepository.findByKeyHash(keyHash);
+        var found = lookupWithCache(keyHash);
 
         if (found.isEmpty() || !found.get().isActive()) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -66,6 +72,16 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    private Optional<ApiKey> lookupWithCache(String keyHash) {
+        CachedApiKey cached = apiKeyCache.get(keyHash);
+        if (cached != null && !cached.isExpired()) {
+            return cached.apiKey;
+        }
+        Optional<ApiKey> result = apiKeyRepository.findByKeyHash(keyHash);
+        apiKeyCache.put(keyHash, new CachedApiKey(result, System.currentTimeMillis()));
+        return result;
+    }
+
     private String hashKey(String rawKey) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -73,6 +89,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
+
+    private record CachedApiKey(Optional<ApiKey> apiKey, long cachedAt) {
+        boolean isExpired() {
+            return System.currentTimeMillis() - cachedAt > CACHE_TTL_MS;
         }
     }
 }

@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -90,6 +91,10 @@ public class StepExecution {
 
     @Column(name = "is_compensation", nullable = false)
     private boolean isCompensation;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     protected StepExecution() {
         // JPA

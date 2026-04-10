@@ -49,10 +49,24 @@ public class AuthService {
         this.lockoutDurationMinutes = lockoutDurationMinutes;
     }
 
+    /**
+     * Dummy hash used for constant-time comparison when user is not found,
+     * preventing timing side-channel attacks that reveal account existence.
+     */
+    private static final String DUMMY_PASSWORD_HASH =
+            "$2a$12$000000000000000000000uGWDREutBMhdOqDG7YkWf3fMFYGW2Kq6";
+
     @Transactional(noRollbackFor = AuthenticationException.class)
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByEmailWithRoles(request.email())
-                .orElseThrow(() -> new AuthenticationException("ATLAS-AUTH-001", "Invalid credentials"));
+        var optionalUser = userRepository.findByEmailWithRoles(request.email());
+
+        if (optionalUser.isEmpty()) {
+            // Perform a dummy password check to prevent timing side-channel
+            passwordEncoder.matches(request.password(), DUMMY_PASSWORD_HASH);
+            throw new AuthenticationException("ATLAS-AUTH-001", "Invalid credentials");
+        }
+
+        User user = optionalUser.get();
 
         if (user.isLocked()) {
             throw new AuthenticationException("ATLAS-AUTH-002", "Account is locked. Try again later.");

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { get, post, postEmpty } from '../api'
 import { LoadingSpinner } from '../components/LoadingSpinner'
@@ -181,7 +181,7 @@ export function WorkflowDefinitionsPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {definitions.map((def) => (
-              <tbody key={def.id}>
+              <Fragment key={def.id}>
                 <tr className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{def.name}</td>
                   <td className="px-4 py-3 text-gray-500">v{def.version}</td>
@@ -219,7 +219,7 @@ export function WorkflowDefinitionsPage() {
                     </td>
                   </tr>
                 )}
-              </tbody>
+              </Fragment>
             ))}
             {definitions.length === 0 && (
               <tr>

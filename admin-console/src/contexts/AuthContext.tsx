@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 import { post } from '../api'
 import type { LoginRequest, LoginResponse } from '../types'
 
+const SESSION_TOKEN_KEY = 'atlas_access_token'
+
 interface AuthState {
   token: string | null
   isAuthenticated: boolean
@@ -15,17 +17,21 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null)
+  const [token, setToken] = useState<string | null>(
+    () => sessionStorage.getItem(SESSION_TOKEN_KEY),
+  )
 
   const login = useCallback(async (email: string, password: string) => {
     const response = await post<LoginResponse>('/api/v1/auth/login', {
       email,
       password,
     } satisfies LoginRequest)
+    sessionStorage.setItem(SESSION_TOKEN_KEY, response.access_token)
     setToken(response.access_token)
   }, [])
 
   const logout = useCallback(() => {
+    sessionStorage.removeItem(SESSION_TOKEN_KEY)
     setToken(null)
   }, [])
 

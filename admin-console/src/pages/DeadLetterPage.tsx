@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { get, postEmpty } from '../api'
@@ -74,9 +74,8 @@ export function DeadLetterPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => (
-              <>
+              <Fragment key={item.id}>
                 <tr
-                  key={item.id}
                   className="cursor-pointer hover:bg-gray-50"
                   onClick={() =>
                     setExpandedId(expandedId === item.id ? null : item.id)
@@ -129,7 +128,7 @@ export function DeadLetterPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
             {items.length === 0 && (
               <tr>

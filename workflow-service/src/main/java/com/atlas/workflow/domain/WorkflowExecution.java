@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -65,6 +66,10 @@ public class WorkflowExecution {
 
     @Column(name = "correlation_id")
     private String correlationId;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     protected WorkflowExecution() {
         // JPA

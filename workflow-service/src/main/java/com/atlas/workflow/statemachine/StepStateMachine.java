@@ -12,7 +12,7 @@ public final class StepStateMachine {
     private static final Map<StepStatus, Set<StepStatus>> ALLOWED_TRANSITIONS = Map.ofEntries(
             Map.entry(StepStatus.PENDING,             Set.of(StepStatus.LEASED)),
             Map.entry(StepStatus.LEASED,              Set.of(StepStatus.RUNNING, StepStatus.PENDING)),
-            Map.entry(StepStatus.RUNNING,             Set.of(StepStatus.SUCCEEDED, StepStatus.FAILED, StepStatus.WAITING)),
+            Map.entry(StepStatus.RUNNING,             Set.of(StepStatus.SUCCEEDED, StepStatus.FAILED, StepStatus.WAITING, StepStatus.RETRY_SCHEDULED)),
             Map.entry(StepStatus.WAITING,             Set.of(StepStatus.SUCCEEDED, StepStatus.FAILED)),
             Map.entry(StepStatus.FAILED,              Set.of(StepStatus.RETRY_SCHEDULED, StepStatus.DEAD_LETTERED, StepStatus.COMPENSATING)),
             Map.entry(StepStatus.RETRY_SCHEDULED,     Set.of(StepStatus.PENDING)),

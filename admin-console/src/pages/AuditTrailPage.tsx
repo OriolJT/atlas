@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { get } from '../api'
 import { LoadingSpinner } from '../components/LoadingSpinner'
@@ -160,9 +160,8 @@ export function AuditTrailPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {events.map((event) => (
-                <>
+                <Fragment key={event.id}>
                   <tr
-                    key={event.id}
                     className="cursor-pointer hover:bg-gray-50"
                     onClick={() =>
                       setExpandedId(expandedId === event.id ? null : event.id)
@@ -196,7 +195,7 @@ export function AuditTrailPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
               {events.length === 0 && (
                 <tr>

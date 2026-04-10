@@ -92,12 +92,12 @@ public class WorkflowExecutionService {
         execution = executionRepository.save(execution);
 
         // Parse steps from definition and create first StepExecution
-        List<Map<String, Object>> steps = parseSteps(definition.getStepsJson());
+        List<Map<String, Object>> steps = StepDefinitionParser.parseSteps(definition.getStepsJson());
         if (!steps.isEmpty()) {
             Map<String, Object> firstStep = steps.get(0);
             String stepName = (String) firstStep.getOrDefault("name", "step-0");
             String stepType = (String) firstStep.getOrDefault("type", "INTERNAL_COMMAND");
-            int maxAttempts = extractMaxAttempts(firstStep);
+            int maxAttempts = StepDefinitionParser.extractMaxAttempts(firstStep);
             Long timeoutMs = firstStep.containsKey("timeout_ms")
                     ? ((Number) firstStep.get("timeout_ms")).longValue() : null;
 
@@ -223,43 +223,5 @@ public class WorkflowExecutionService {
         );
     }
 
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> parseSteps(Object stepsJson) {
-        if (stepsJson == null) {
-            return List.of();
-        }
-        if (stepsJson instanceof List<?> list) {
-            return list.stream()
-                    .map(item -> (Map<String, Object>) item)
-                    .toList();
-        }
-        if (stepsJson instanceof Map<?, ?> map) {
-            // Legacy Map format — convert to List sorted by key
-            List<Map.Entry<String, Object>> entries = new ArrayList<>(((Map<String, Object>) map).entrySet());
-            entries.sort(Comparator.comparing(Map.Entry::getKey));
-            return entries.stream()
-                    .map(e -> {
-                        Map<String, Object> step = new HashMap<>((Map<String, Object>) e.getValue());
-                        step.putIfAbsent("name", e.getKey());
-                        return step;
-                    })
-                    .toList();
-        }
-        return List.of();
-    }
-
-    private int extractMaxAttempts(Map<String, Object> stepDef) {
-        if (stepDef.containsKey("retry_policy")) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> retryPolicy = (Map<String, Object>) stepDef.get("retry_policy");
-            if (retryPolicy != null && retryPolicy.containsKey("max_attempts")) {
-                return ((Number) retryPolicy.get("max_attempts")).intValue();
-            }
-        }
-        // Fallback: support legacy "maxAttempts" key
-        if (stepDef.containsKey("maxAttempts")) {
-            return ((Number) stepDef.get("maxAttempts")).intValue();
-        }
-        return 1;
-    }
+    // parseSteps() and extractMaxAttempts() moved to StepDefinitionParser
 }

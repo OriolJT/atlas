@@ -26,6 +26,9 @@ release.properties
 .env
 *.log
 
+# K8s secrets (use secrets.yaml.template)
+k8s/secrets.yaml
+
 # Compiled class files
 *.class
 

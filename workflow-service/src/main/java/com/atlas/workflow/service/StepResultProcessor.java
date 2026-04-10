@@ -22,9 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.atlas.common.event.EventTypes;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -146,7 +143,7 @@ public class StepResultProcessor {
                 .orElseThrow(() -> new IllegalStateException(
                         "Definition not found: " + execution.getDefinitionId()));
 
-        List<Map<String, Object>> steps = parseSteps(definition.getStepsJson());
+        List<Map<String, Object>> steps = StepDefinitionParser.parseSteps(definition.getStepsJson());
         int nextStepIndex = step.getStepIndex() + 1;
 
         if (nextStepIndex >= steps.size()) {
@@ -160,7 +157,7 @@ public class StepResultProcessor {
             Map<String, Object> nextStepDef = steps.get(nextStepIndex);
             String nextStepName = (String) nextStepDef.getOrDefault("name", "step-" + nextStepIndex);
             String stepType = (String) nextStepDef.getOrDefault("type", "UNKNOWN");
-            int maxAttempts = extractMaxAttempts(nextStepDef);
+            int maxAttempts = StepDefinitionParser.extractMaxAttempts(nextStepDef);
             Long timeoutMs = nextStepDef.containsKey("timeout_ms")
                     ? ((Number) nextStepDef.get("timeout_ms")).longValue() : null;
 
@@ -263,10 +260,7 @@ public class StepResultProcessor {
         long delay = delayMs != null ? delayMs : BASE_BACKOFF_MS;
         Instant wakeUp = Instant.now().plusMillis(delay);
 
-        // RUNNING -> FAILED -> RETRY_SCHEDULED (reuse existing state machine)
-        stepStateMachine.validate(step.getStatus(), StepStatus.FAILED);
-        step.transitionTo(StepStatus.FAILED);
-
+        // RUNNING -> RETRY_SCHEDULED directly (delay is not a failure)
         stepStateMachine.validate(step.getStatus(), StepStatus.RETRY_SCHEDULED);
         step.scheduleRetry(wakeUp);
         stepExecutionRepository.save(step);
@@ -295,43 +289,5 @@ public class StepResultProcessor {
         return Math.min(backoff, MAX_BACKOFF_MS);
     }
 
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> parseSteps(Object stepsJson) {
-        if (stepsJson == null) {
-            return List.of();
-        }
-        if (stepsJson instanceof List<?> list) {
-            return list.stream()
-                    .map(item -> (Map<String, Object>) item)
-                    .toList();
-        }
-        if (stepsJson instanceof Map<?, ?> map) {
-            // Legacy Map format — convert to List sorted by key
-            List<Map.Entry<String, Object>> entries = new ArrayList<>(((Map<String, Object>) map).entrySet());
-            entries.sort(Comparator.comparing(Map.Entry::getKey));
-            return entries.stream()
-                    .map(e -> {
-                        Map<String, Object> stepDef = new HashMap<>((Map<String, Object>) e.getValue());
-                        stepDef.putIfAbsent("name", e.getKey());
-                        return stepDef;
-                    })
-                    .toList();
-        }
-        return List.of();
-    }
-
-    private int extractMaxAttempts(Map<String, Object> stepDef) {
-        if (stepDef.containsKey("retry_policy")) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> retryPolicy = (Map<String, Object>) stepDef.get("retry_policy");
-            if (retryPolicy != null && retryPolicy.containsKey("max_attempts")) {
-                return ((Number) retryPolicy.get("max_attempts")).intValue();
-            }
-        }
-        // Fallback: support legacy "maxAttempts" key
-        if (stepDef.containsKey("maxAttempts")) {
-            return ((Number) stepDef.get("maxAttempts")).intValue();
-        }
-        return 1;
-    }
+    // parseSteps() and extractMaxAttempts() moved to StepDefinitionParser
 }

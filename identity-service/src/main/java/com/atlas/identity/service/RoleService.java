@@ -98,6 +98,12 @@ public class RoleService {
         var role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new IllegalArgumentException("Role with id '" + roleId + "' does not exist"));
 
+        if (!user.getTenantId().equals(role.getTenantId())) {
+            throw new IllegalArgumentException(
+                    "Cross-tenant role assignment is not allowed: user tenant "
+                            + user.getTenantId() + " != role tenant " + role.getTenantId());
+        }
+
         user.addRole(role);
         user = userRepository.save(user);
 

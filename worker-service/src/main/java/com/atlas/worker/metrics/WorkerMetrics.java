@@ -23,26 +23,11 @@ import java.time.Duration;
 public class WorkerMetrics {
 
     private final MeterRegistry registry;
-    private final Timer stepDurationTimer;
-    private final Counter stepSuccessCounter;
-    private final Counter stepFailureCounter;
     private final Counter leaseAcquiredCounter;
     private final Counter leaseConflictCounter;
 
     public WorkerMetrics(MeterRegistry registry) {
         this.registry = registry;
-
-        this.stepDurationTimer = Timer.builder("atlas.worker.step.duration")
-                .description("Execution duration of worker steps")
-                .register(registry);
-
-        this.stepSuccessCounter = Counter.builder("atlas.worker.step.success")
-                .description("Number of successfully completed worker steps")
-                .register(registry);
-
-        this.stepFailureCounter = Counter.builder("atlas.worker.step.failure")
-                .description("Number of failed worker step executions")
-                .register(registry);
 
         this.leaseAcquiredCounter = Counter.builder("atlas.worker.lease.acquired")
                 .description("Number of Redis leases successfully acquired")
