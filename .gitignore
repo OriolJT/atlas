@@ -36,3 +36,7 @@ release.properties
 
 # Test output
 /surefire-reports/
+
+# Admin Console
+admin-console/node_modules/
+admin-console/dist/
