@@ -1,4 +1,4 @@
-.PHONY: build test clean infra-up infra-down app-up app-down up down seed health
+.PHONY: build test clean infra-up infra-down app-up app-down up down seed health e2e
 
 build:
 	mvn clean package -DskipTests
@@ -34,3 +34,6 @@ health:
 	@curl -sf http://localhost:8082/actuator/health | jq -r '.status' 2>/dev/null || echo "workflow: DOWN"
 	@curl -sf http://localhost:8083/actuator/health | jq -r '.status' 2>/dev/null || echo "worker: DOWN"
 	@curl -sf http://localhost:8084/actuator/health | jq -r '.status' 2>/dev/null || echo "audit: DOWN"
+
+e2e:
+	./tests/e2e/run-e2e.sh
