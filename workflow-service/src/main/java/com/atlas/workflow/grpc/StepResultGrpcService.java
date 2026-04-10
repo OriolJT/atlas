@@ -90,7 +90,7 @@ public class StepResultGrpcService extends StepResultServiceGrpc.StepResultServi
             // Parse the JSON string into a Map for the processor
             try {
                 @SuppressWarnings("unchecked")
-                Map<String, Object> output = new tools.jackson.databind.ObjectMapper()
+                Map<String, Object> output = new com.fasterxml.jackson.databind.ObjectMapper()
                         .readValue(request.getOutputJson(), Map.class);
                 payload.put("output", output);
             } catch (Exception e) {

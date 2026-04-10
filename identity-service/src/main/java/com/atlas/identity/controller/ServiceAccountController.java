@@ -4,6 +4,7 @@ import com.atlas.identity.dto.ApiKeyResponse;
 import com.atlas.identity.dto.CreateApiKeyRequest;
 import com.atlas.identity.dto.CreateServiceAccountRequest;
 import com.atlas.identity.dto.ServiceAccountResponse;
+import com.atlas.identity.security.TenantContext;
 import com.atlas.identity.service.ServiceAccountService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,9 +24,12 @@ import java.net.URI;
 public class ServiceAccountController {
 
     private final ServiceAccountService serviceAccountService;
+    private final TenantContext tenantContext;
 
-    public ServiceAccountController(ServiceAccountService serviceAccountService) {
+    public ServiceAccountController(ServiceAccountService serviceAccountService,
+                                     TenantContext tenantContext) {
         this.serviceAccountService = serviceAccountService;
+        this.tenantContext = tenantContext;
     }
 
     @Operation(summary = "Create service account", description = "Create a new service account for machine-to-machine authentication")
@@ -34,7 +38,11 @@ public class ServiceAccountController {
     @PostMapping("/service-accounts")
     public ResponseEntity<ServiceAccountResponse> createServiceAccount(
             @Valid @RequestBody CreateServiceAccountRequest request) {
-        ServiceAccountResponse response = serviceAccountService.createServiceAccount(request);
+        // Derive tenantId from authenticated context to prevent cross-tenant creation
+        var securedRequest = new CreateServiceAccountRequest(
+                tenantContext.getTenantId(),
+                request.name());
+        ServiceAccountResponse response = serviceAccountService.createServiceAccount(securedRequest);
         URI location = URI.create("/api/v1/service-accounts/" + response.serviceAccountId());
         return ResponseEntity.created(location).body(response);
     }

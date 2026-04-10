@@ -4,6 +4,10 @@ spring:
       hibernate:
         show_sql: true
 
+atlas:
+  jwt:
+    secret: atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256
+
 logging:
   level:
     com.atlas.identity: DEBUG

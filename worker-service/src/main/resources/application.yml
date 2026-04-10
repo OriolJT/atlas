@@ -25,7 +25,7 @@ spring:
       port: ${ATLAS_REDIS_PORT:6379}
 atlas:
   jwt:
-    secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
+    secret: ${ATLAS_JWT_SECRET}
   rate-limit:
     requests-per-minute: 600
     burst-size: 100

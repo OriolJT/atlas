@@ -9,3 +9,7 @@ spring:
     properties:
       hibernate:
         default_schema: identity
+
+atlas:
+  jwt:
+    secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256

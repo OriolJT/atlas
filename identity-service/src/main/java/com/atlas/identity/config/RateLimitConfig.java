@@ -6,7 +6,6 @@ import com.atlas.common.ratelimit.RateLimiter;
 import com.atlas.common.ratelimit.RedisRateLimiter;
 import com.atlas.common.ratelimit.TenantQuotaResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,8 +24,7 @@ public class RateLimitConfig {
     public RateLimitFilter rateLimitFilter(RateLimiter rateLimiter,
                                            TenantQuotaResolver tenantQuotaResolver,
                                            RateLimitProperties rateLimitProperties,
-                                           ObjectMapper objectMapper,
-                                           @Value("${atlas.jwt.secret}") String jwtSecret) {
-        return new RateLimitFilter(rateLimiter, rateLimitProperties, tenantQuotaResolver, objectMapper, jwtSecret);
+                                           ObjectMapper objectMapper) {
+        return new RateLimitFilter(rateLimiter, rateLimitProperties, tenantQuotaResolver, objectMapper);
     }
 }

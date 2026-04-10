@@ -3,6 +3,7 @@ package com.atlas.identity.controller;
 import com.atlas.identity.dto.AssignPermissionsRequest;
 import com.atlas.identity.dto.CreateRoleRequest;
 import com.atlas.identity.dto.RoleResponse;
+import com.atlas.identity.security.TenantContext;
 import com.atlas.identity.service.RoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,9 +25,11 @@ import java.util.UUID;
 public class RoleController {
 
     private final RoleService roleService;
+    private final TenantContext tenantContext;
 
-    public RoleController(RoleService roleService) {
+    public RoleController(RoleService roleService, TenantContext tenantContext) {
         this.roleService = roleService;
+        this.tenantContext = tenantContext;
     }
 
     @Operation(summary = "Create role", description = "Define a new role within the current tenant")
@@ -35,7 +38,12 @@ public class RoleController {
     @ApiResponse(responseCode = "409", description = "Role name already exists in this tenant")
     @PostMapping
     public ResponseEntity<RoleResponse> createRole(@Valid @RequestBody CreateRoleRequest request) {
-        var role = roleService.createRole(request);
+        // Derive tenantId from authenticated context to prevent cross-tenant creation
+        var securedRequest = new CreateRoleRequest(
+                tenantContext.getTenantId(),
+                request.name(),
+                request.description());
+        var role = roleService.createRole(securedRequest);
         var response = RoleResponse.from(role);
         var location = URI.create("/api/v1/roles/" + role.getRoleId());
         return ResponseEntity.created(location).body(response);

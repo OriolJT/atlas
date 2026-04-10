@@ -55,7 +55,7 @@ public class StepResultGrpcClient {
 
         if (result.output() != null) {
             try {
-                String outputJson = new tools.jackson.databind.ObjectMapper()
+                String outputJson = new com.fasterxml.jackson.databind.ObjectMapper()
                         .writeValueAsString(result.output());
                 requestBuilder.setOutputJson(outputJson);
             } catch (Exception e) {

@@ -84,7 +84,9 @@ public class CompensationEngine {
             return;
         }
 
-        // Create compensation StepExecutions and outbox events
+        // Create all compensation StepExecutions (in reverse order of original steps)
+        // but only dispatch the FIRST one. Subsequent steps are dispatched sequentially
+        // in handleCompensationStepResult() as each one completes.
         int compensationIndex = 0;
         for (StepExecution originalStep : compensatableSteps) {
             @SuppressWarnings("unchecked")
@@ -110,31 +112,14 @@ public class CompensationEngine {
             compensationStep = stepExecutionRepository.save(compensationStep);
 
             // Mark original step as COMPENSATING
-            stepStateMachine.validate(originalStep.getStatus(), StepStatus.COMPENSATING);
             originalStep.transitionTo(StepStatus.COMPENSATING);
             stepExecutionRepository.save(originalStep);
 
-            // Publish execute command via outbox
-            Map<String, Object> payload = Map.of(
-                    "step_execution_id", compensationStep.getStepExecutionId().toString(),
-                    "execution_id", execution.getExecutionId().toString(),
-                    "tenant_id", execution.getTenantId().toString(),
-                    "step_name", compensationStepName,
-                    "step_type", compensationType,
-                    "step_index", compensationIndex,
-                    "input", compensationInput,
-                    "is_compensation", true
-            );
-
-            OutboxEvent outboxEvent = OutboxEvent.create(
-                    "StepExecution",
-                    compensationStep.getStepExecutionId(),
-                    "step.execute",
-                    STEP_EXECUTE_TOPIC,
-                    payload,
-                    execution.getTenantId()
-            );
-            outboxRepository.save(outboxEvent);
+            // Only dispatch the FIRST compensation step; the rest will be dispatched
+            // sequentially as each one succeeds in handleCompensationStepResult()
+            if (compensationIndex == 0) {
+                dispatchCompensationStep(compensationStep, execution);
+            }
 
             log.info("Created compensation step {} for original step {} in execution {}",
                     compensationStep.getStepExecutionId(), originalStep.getStepName(),
@@ -150,7 +135,6 @@ public class CompensationEngine {
                                               boolean succeeded,
                                               String error) {
         if (succeeded) {
-            stepStateMachine.validate(compensationStep.getStatus(), StepStatus.SUCCEEDED);
             compensationStep.transitionTo(StepStatus.SUCCEEDED);
             stepExecutionRepository.save(compensationStep);
 
@@ -162,7 +146,6 @@ public class CompensationEngine {
                         .filter(s -> s.getStepName().equals(originalStepName) && !s.isCompensation())
                         .findFirst()
                         .ifPresent(originalStep -> {
-                            stepStateMachine.validate(originalStep.getStatus(), StepStatus.COMPENSATED);
                             originalStep.transitionTo(StepStatus.COMPENSATED);
                             stepExecutionRepository.save(originalStep);
                         });
@@ -173,14 +156,14 @@ public class CompensationEngine {
                 log.info("All compensation steps completed for execution {}", execution.getExecutionId());
                 execution.transitionTo(ExecutionStatus.COMPENSATED);
                 executionRepository.save(execution);
+            } else {
+                // Dispatch the next PENDING compensation step (sequential compensation)
+                dispatchNextPendingCompensationStep(execution);
             }
         } else {
             // Compensation step failed -> COMPENSATION_FAILED -> DEAD_LETTERED
-            stepStateMachine.validate(compensationStep.getStatus(), StepStatus.COMPENSATION_FAILED);
             compensationStep.setErrorMessage(error);
             compensationStep.transitionTo(StepStatus.COMPENSATION_FAILED);
-
-            stepStateMachine.validate(compensationStep.getStatus(), StepStatus.DEAD_LETTERED);
             compensationStep.transitionTo(StepStatus.DEAD_LETTERED);
             stepExecutionRepository.save(compensationStep);
 
@@ -190,6 +173,38 @@ public class CompensationEngine {
             execution.transitionTo(ExecutionStatus.COMPENSATION_FAILED);
             executionRepository.save(execution);
         }
+    }
+
+    private void dispatchNextPendingCompensationStep(WorkflowExecution execution) {
+        stepExecutionRepository.findByExecutionIdOrderByStepIndex(execution.getExecutionId())
+                .stream()
+                .filter(StepExecution::isCompensation)
+                .filter(s -> s.getStatus() == StepStatus.PENDING)
+                .findFirst()
+                .ifPresent(nextStep -> dispatchCompensationStep(nextStep, execution));
+    }
+
+    private void dispatchCompensationStep(StepExecution compensationStep, WorkflowExecution execution) {
+        Map<String, Object> payload = Map.of(
+                "step_execution_id", compensationStep.getStepExecutionId().toString(),
+                "execution_id", execution.getExecutionId().toString(),
+                "tenant_id", execution.getTenantId().toString(),
+                "step_name", compensationStep.getStepName(),
+                "step_type", compensationStep.getStepType(),
+                "step_index", compensationStep.getStepIndex(),
+                "input", compensationStep.getInputJson(),
+                "is_compensation", true
+        );
+
+        OutboxEvent outboxEvent = OutboxEvent.create(
+                "StepExecution",
+                compensationStep.getStepExecutionId(),
+                "step.execute",
+                STEP_EXECUTE_TOPIC,
+                payload,
+                execution.getTenantId()
+        );
+        outboxRepository.save(outboxEvent);
     }
 
     private boolean allCompensationStepsDone(WorkflowExecution execution) {

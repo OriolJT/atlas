@@ -39,7 +39,9 @@ spring:
 
 atlas:
   jwt:
-    secret: ${ATLAS_JWT_SECRET:atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256}
+    secret: ${ATLAS_JWT_SECRET}
+  internal:
+    api-key: ${ATLAS_INTERNAL_API_KEY:dev-internal-key}
     access-token-expiry-minutes: 15
     refresh-token-expiry-days: 7
   rate-limit:

@@ -10,6 +10,8 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.atlas.workflow.statemachine.StepStateMachine;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -131,6 +133,7 @@ public class StepExecution {
 
     public void transitionTo(StepStatus newStatus) {
         StepStatus previous = this.status;
+        StepStateMachine.validate(previous, newStatus);
         this.status = newStatus;
         appendHistory(newStatus, "transition from " + previous);
 

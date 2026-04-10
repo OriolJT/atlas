@@ -1,21 +1,18 @@
 package com.atlas.common.ratelimit;
 
+import com.atlas.common.security.AuthenticatedPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
-import javax.crypto.SecretKey;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,8 +21,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class RateLimitFilterTest {
-
-    private static final String JWT_SECRET = "this-is-a-test-secret-key-that-is-at-least-32-bytes-long";
 
     private RateLimiter rateLimiter;
     private RateLimitProperties properties;
@@ -45,17 +40,22 @@ class RateLimitFilterTest {
         quotaResolver = new DefaultTenantQuotaResolver();
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        filter = new RateLimitFilter(rateLimiter, properties, quotaResolver, objectMapper, JWT_SECRET);
+        filter = new RateLimitFilter(rateLimiter, properties, quotaResolver, objectMapper);
 
         request = new MockHttpServletRequest();
         response = new MockHttpServletResponse();
         filterChain = mock(FilterChain.class);
     }
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void allowsRequest_whenBucketHasTokens() throws ServletException, IOException {
         UUID tenantId = UUID.randomUUID();
-        request.addHeader("Authorization", "Bearer " + createToken(tenantId));
+        setAuthenticatedPrincipal(tenantId);
         when(rateLimiter.tryConsume(eq(tenantId), eq(60), eq(10))).thenReturn(true);
 
         filter.doFilterInternal(request, response, filterChain);
@@ -67,7 +67,7 @@ class RateLimitFilterTest {
     @Test
     void returns429_whenBucketIsEmpty() throws ServletException, IOException {
         UUID tenantId = UUID.randomUUID();
-        request.addHeader("Authorization", "Bearer " + createToken(tenantId));
+        setAuthenticatedPrincipal(tenantId);
         request.setAttribute("correlationId", "test-corr-id");
         when(rateLimiter.tryConsume(eq(tenantId), eq(60), eq(10))).thenReturn(false);
 
@@ -82,17 +82,7 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void passesThrough_whenNoAuthHeader() throws ServletException, IOException {
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-        verifyNoInteractions(rateLimiter);
-    }
-
-    @Test
-    void passesThrough_whenMalformedToken() throws ServletException, IOException {
-        request.addHeader("Authorization", "Bearer not-a-valid-jwt");
-
+    void passesThrough_whenNoAuthentication() throws ServletException, IOException {
         filter.doFilterInternal(request, response, filterChain);
 
         verify(filterChain).doFilter(request, response);
@@ -141,15 +131,9 @@ class RateLimitFilterTest {
         verify(filterChain).doFilter(request, response);
     }
 
-    private String createToken(UUID tenantId) {
-        SecretKey key = Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8));
-        return Jwts.builder()
-                .subject(UUID.randomUUID().toString())
-                .claim("tenant_id", tenantId.toString())
-                .claim("roles", List.of("ROLE_USER"))
-                .issuedAt(Date.from(Instant.now()))
-                .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
-                .signWith(key)
-                .compact();
+    private void setAuthenticatedPrincipal(UUID tenantId) {
+        var principal = new AuthenticatedPrincipal(UUID.randomUUID(), tenantId, List.of("USER"));
+        var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 }

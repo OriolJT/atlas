@@ -38,7 +38,14 @@ public class UserController {
     @ApiResponse(responseCode = "409", description = "Email already registered in this tenant")
     @PostMapping
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-        var user = userService.createUser(request);
+        // Derive tenantId from authenticated context to prevent cross-tenant creation
+        var securedRequest = new CreateUserRequest(
+                tenantContext.getTenantId(),
+                request.email(),
+                request.password(),
+                request.firstName(),
+                request.lastName());
+        var user = userService.createUser(securedRequest);
         var response = UserResponse.from(user);
         var location = URI.create("/api/v1/users/" + user.getUserId());
         return ResponseEntity.created(location).body(response);

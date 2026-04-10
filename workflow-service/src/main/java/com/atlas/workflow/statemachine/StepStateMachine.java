@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Component
-public class StepStateMachine {
+public final class StepStateMachine {
 
     private static final Map<StepStatus, Set<StepStatus>> ALLOWED_TRANSITIONS = Map.ofEntries(
             Map.entry(StepStatus.PENDING,             Set.of(StepStatus.LEASED)),
@@ -19,16 +19,16 @@ public class StepStateMachine {
             Map.entry(StepStatus.SUCCEEDED,           Set.of(StepStatus.COMPENSATING)),
             Map.entry(StepStatus.COMPENSATING,        Set.of(StepStatus.COMPENSATED, StepStatus.COMPENSATION_FAILED)),
             Map.entry(StepStatus.COMPENSATION_FAILED, Set.of(StepStatus.DEAD_LETTERED)),
-            Map.entry(StepStatus.DEAD_LETTERED,       Set.of()),
+            Map.entry(StepStatus.DEAD_LETTERED,       Set.of(StepStatus.PENDING)),
             Map.entry(StepStatus.COMPENSATED,         Set.of())
     );
 
-    public boolean canTransition(StepStatus from, StepStatus to) {
+    public static boolean canTransition(StepStatus from, StepStatus to) {
         Set<StepStatus> allowed = ALLOWED_TRANSITIONS.get(from);
         return allowed != null && allowed.contains(to);
     }
 
-    public void validate(StepStatus from, StepStatus to) {
+    public static void validate(StepStatus from, StepStatus to) {
         if (!canTransition(from, to)) {
             throw new IllegalStateException(
                     "Invalid step transition: " + from + " -> " + to);

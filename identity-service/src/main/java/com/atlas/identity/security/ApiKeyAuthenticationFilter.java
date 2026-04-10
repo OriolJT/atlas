@@ -51,8 +51,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
 
         var key = found.get();
-        key.recordUsage();
-        apiKeyRepository.save(key);
+        // TODO: Usage tracking should be done asynchronously (e.g., via a scheduled batch
+        // update or event) to avoid a synchronous DB write on every authenticated request.
 
         var authorities = List.of(new SimpleGrantedAuthority("ROLE_SERVICE_ACCOUNT"));
         var authentication = new UsernamePasswordAuthenticationToken(

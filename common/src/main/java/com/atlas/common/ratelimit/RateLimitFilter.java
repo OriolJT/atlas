@@ -1,12 +1,8 @@
 package com.atlas.common.ratelimit;
 
+import com.atlas.common.security.AuthenticatedPrincipal;
 import com.atlas.common.web.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,18 +10,19 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import javax.crypto.SecretKey;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
  * Servlet filter that enforces per-tenant rate limits via a Redis token bucket.
  *
  * <p>Registered by each service's {@code SecurityConfig} after the JWT auth filter so that
- * tenant context is available. Skips non-tenant paths (actuator, swagger, auth endpoints).
+ * tenant context is available via {@link SecurityContextHolder}. Skips non-tenant paths
+ * (actuator, swagger, auth endpoints).
  *
  * <p>When the bucket is exhausted the filter writes a 429 response and sets
  * {@code Retry-After: 60} (seconds until next full minute refill window).
@@ -38,18 +35,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final RateLimitProperties properties;
     private final TenantQuotaResolver quotaResolver;
     private final ObjectMapper objectMapper;
-    private final SecretKey jwtSigningKey;
 
     public RateLimitFilter(RateLimiter rateLimiter,
                            RateLimitProperties properties,
                            TenantQuotaResolver quotaResolver,
-                           ObjectMapper objectMapper,
-                           String jwtSecret) {
+                           ObjectMapper objectMapper) {
         this.rateLimiter = rateLimiter;
         this.properties = properties;
         this.quotaResolver = quotaResolver;
         this.objectMapper = objectMapper;
-        this.jwtSigningKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
@@ -78,32 +72,26 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private UUID extractTenantId(HttpServletRequest request) {
-        // Try Bearer JWT
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
+        // Read tenant from SecurityContext (set by the auth filter that runs before this filter)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedPrincipal principal) {
+            return principal.tenantId();
+        }
+        // Fallback: identity-service stores details in authentication.getDetails()
+        if (authentication != null && authentication.getDetails() != null) {
+            Object details = authentication.getDetails();
             try {
-                Claims claims = Jwts.parser()
-                        .verifyWith(jwtSigningKey)
-                        .build()
-                        .parseSignedClaims(token)
-                        .getPayload();
-                String tenantIdStr = claims.get("tenant_id", String.class);
-                if (tenantIdStr != null) {
-                    return UUID.fromString(tenantIdStr);
+                // Support identity-service's JwtAuthenticationDetails (same shape: has tenantId())
+                var method = details.getClass().getMethod("tenantId");
+                Object tenantId = method.invoke(details);
+                if (tenantId instanceof UUID uuid) {
+                    return uuid;
                 }
-            } catch (ExpiredJwtException e) {
-                String tenantIdStr = e.getClaims().get("tenant_id", String.class);
-                if (tenantIdStr != null) {
-                    return UUID.fromString(tenantIdStr);
-                }
-            } catch (JwtException | IllegalArgumentException ignored) {
-                // Malformed -- let auth filter deal with it
+            } catch (Exception ignored) {
+                // Not a details object with tenantId() method
             }
         }
-        // X-API-Key is handled by ApiKeyAuthenticationFilter; at the point the rate
-        // limit filter runs (after ApiKeyAuthenticationFilter) the tenant is in the
-        // request attribute set by ApiKeyAuthenticationFilter.
+        // Fallback: request attribute (e.g., set by ApiKeyAuthenticationFilter)
         Object attr = request.getAttribute("rateLimitTenantId");
         if (attr instanceof UUID tenantIdAttr) {
             return tenantIdAttr;

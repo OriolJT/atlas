@@ -34,7 +34,8 @@ class StepStateMachineTest {
             "SUCCEEDED,           COMPENSATING",
             "COMPENSATING,        COMPENSATED",
             "COMPENSATING,        COMPENSATION_FAILED",
-            "COMPENSATION_FAILED, DEAD_LETTERED"
+            "COMPENSATION_FAILED, DEAD_LETTERED",
+            "DEAD_LETTERED,       PENDING"
     })
     void validTransitions(String from, String to) {
         StepStatus fromStatus = StepStatus.valueOf(from.trim());
@@ -52,7 +53,7 @@ class StepStateMachineTest {
             "RUNNING,        LEASED",
             "RUNNING,        PENDING",
             "SUCCEEDED,      PENDING",
-            "DEAD_LETTERED,  PENDING",
+            "DEAD_LETTERED,  RUNNING",
             "COMPENSATED,    COMPENSATING",
             "COMPENSATED,    PENDING"
     })
@@ -66,7 +67,7 @@ class StepStateMachineTest {
     @ParameterizedTest(name = "validate({0} -> {1}) should throw")
     @CsvSource({
             "PENDING,       RUNNING",
-            "DEAD_LETTERED, PENDING",
+            "DEAD_LETTERED, RUNNING",
             "COMPENSATED,   COMPENSATING"
     })
     void validateThrowsOnInvalidTransition(String from, String to) {
