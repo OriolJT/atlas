@@ -40,12 +40,20 @@ class InternalPermissionsControllerIntegrationTest {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    private static final String INTERNAL_API_KEY = "test-internal-key";
+
     private HttpHeaders authHeaders(UUID tenantId) {
         String token = jwtTokenProvider.generateAccessToken(
                 UUID.randomUUID(), tenantId, List.of("TENANT_ADMIN"));
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
+        return headers;
+    }
+
+    private HttpHeaders internalHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Internal-Api-Key", INTERNAL_API_KEY);
         return headers;
     }
 
@@ -72,9 +80,10 @@ class InternalPermissionsControllerIntegrationTest {
         restTemplate.exchange("/api/v1/roles/" + roleId + "/permissions", HttpMethod.POST,
                 new HttpEntity<>(assignRequest, headers), RoleResponse.class);
 
-        // Query internal permissions endpoint (permitAll)
-        ResponseEntity<PermissionMappingResponse> response = restTemplate.getForEntity(
-                "/api/v1/internal/permissions?tenantId=" + tenantId, PermissionMappingResponse.class);
+        // Query internal permissions endpoint (requires X-Internal-Api-Key)
+        ResponseEntity<PermissionMappingResponse> response = restTemplate.exchange(
+                "/api/v1/internal/permissions?tenantId=" + tenantId, HttpMethod.GET,
+                new HttpEntity<>(internalHeaders()), PermissionMappingResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         PermissionMappingResponse body = response.getBody();
@@ -93,8 +102,9 @@ class InternalPermissionsControllerIntegrationTest {
         assertThat(tenantResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         UUID tenantId = tenantResponse.getBody().tenantId();
 
-        ResponseEntity<PermissionMappingResponse> response = restTemplate.getForEntity(
-                "/api/v1/internal/permissions?tenantId=" + tenantId, PermissionMappingResponse.class);
+        ResponseEntity<PermissionMappingResponse> response = restTemplate.exchange(
+                "/api/v1/internal/permissions?tenantId=" + tenantId, HttpMethod.GET,
+                new HttpEntity<>(internalHeaders()), PermissionMappingResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         PermissionMappingResponse body = response.getBody();

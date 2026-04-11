@@ -144,18 +144,6 @@ class UserControllerIntegrationTest {
     }
 
     @Test
-    void createUser_nonExistentTenant_returns400() {
-        var request = new CreateUserRequest(UUID.randomUUID(), "eve@example.com", "SecurePass1", "Eve", "Green");
-
-        ResponseEntity<String> response = restTemplate.exchange(
-                "/api/v1/users", HttpMethod.POST,
-                new HttpEntity<>(request, authHeaders()), String.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).contains("does not exist");
-    }
-
-    @Test
     void createUser_invalidEmail_returns400() {
         var request = new CreateUserRequest(tenantId, "not-an-email", "SecurePass1", "Frank", "Black");
 

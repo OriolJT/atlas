@@ -109,14 +109,21 @@ class CompensationEngineIntegrationTest {
         assertThat(updatedStep1.getStatus()).isEqualTo(StepStatus.COMPENSATING);
         assertThat(updatedStep2.getStatus()).isEqualTo(StepStatus.COMPENSATING);
 
-        // Verify 2 outbox events for compensation step.execute commands
+        // Verify only 1 outbox event: compensation executes sequentially, only the first
+        // compensation step (step2, reversed order) is dispatched immediately.
+        // Subsequent steps are dispatched as each one completes.
         List<OutboxEvent> outboxEvents = outboxRepository.findUnpublished();
         List<OutboxEvent> compensationOutbox = outboxEvents.stream()
                 .filter(e -> compensationSteps.stream()
                         .anyMatch(cs -> cs.getStepExecutionId().equals(e.getAggregateId())))
                 .toList();
-        assertThat(compensationOutbox).hasSize(2);
+        assertThat(compensationOutbox).hasSize(1);
         assertThat(compensationOutbox).allMatch(e -> e.getEventType().equals("step.execute"));
+        // The dispatched step should be the first in reverse order (step2)
+        StepExecution firstDispatched = compensationSteps.stream()
+                .filter(cs -> cs.getStepExecutionId().equals(compensationOutbox.get(0).getAggregateId()))
+                .findFirst().orElseThrow();
+        assertThat(firstDispatched.getCompensationFor()).isEqualTo("step2");
     }
 
     @Test

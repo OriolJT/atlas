@@ -88,11 +88,14 @@ class WorkerMetricsTest {
     }
 
     @Test
-    void initialState_allBaseMetersRegistered() {
-        assertThat(registry.find("atlas.worker.step.duration").timer()).isNotNull();
-        assertThat(registry.find("atlas.worker.step.success").counter()).isNotNull();
-        assertThat(registry.find("atlas.worker.step.failure").counter()).isNotNull();
+    void initialState_leaseMetersPreRegistered() {
+        // Lease meters are pre-registered in the constructor (no tags required)
         assertThat(registry.find("atlas.worker.lease.acquired").counter()).isNotNull();
         assertThat(registry.find("atlas.worker.lease.conflict").counter()).isNotNull();
+
+        // Step meters are tag-based (step_type) and registered lazily on first use
+        assertThat(registry.find("atlas.worker.step.duration").timer()).isNull();
+        assertThat(registry.find("atlas.worker.step.success").counter()).isNull();
+        assertThat(registry.find("atlas.worker.step.failure").counter()).isNull();
     }
 }

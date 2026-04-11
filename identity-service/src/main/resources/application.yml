@@ -39,11 +39,11 @@ spring:
 
 atlas:
   jwt:
-    secret: ${ATLAS_JWT_SECRET}
-  internal:
-    api-key: ${ATLAS_INTERNAL_API_KEY:dev-internal-key}
+    secret: ${ATLAS_JWT_SECRET:atlas-dev-only-jwt-secret-key-change-in-production-at-least-256-bits}
     access-token-expiry-minutes: 15
     refresh-token-expiry-days: 7
+  internal:
+    api-key: ${ATLAS_INTERNAL_API_KEY:dev-internal-key}
   rate-limit:
     requests-per-minute: 600
     burst-size: 100

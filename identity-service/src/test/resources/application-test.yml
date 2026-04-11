@@ -13,3 +13,6 @@ spring:
 atlas:
   jwt:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256
+
+  internal:
+    api-key: test-internal-key
