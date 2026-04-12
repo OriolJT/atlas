@@ -65,19 +65,21 @@ The consequence of Redis unavailability is delayed execution, not data loss or c
 
 ---
 
-## 5. Compensation is best-effort but durable
+## 5. Compensation is best-effort and continues on failure
 
-**Decision:** Compensation steps are executed with retries. If all retries are exhausted, the execution enters `COMPENSATION_FAILED`, a terminal state requiring operator intervention. The failed step is dead-lettered.
+**Decision:** Compensation runs all compensatable steps sequentially in reverse order. If a compensation step fails, it is dead-lettered and the engine continues to the next compensation step. Once all compensation steps have been attempted, the execution enters `COMPENSATION_FAILED` (if any step failed) or `COMPENSATED` (if all succeeded). The `StepResultProcessor` also respects the `non_retryable` flag — when a worker marks a failure as non-retryable, the step bypasses retry logic entirely and is immediately dead-lettered.
 
-**Rejected:** Treating compensation failure as unrecoverable without operator visibility, or blocking indefinitely on compensation.
+**Rejected:** Halting compensation on the first failure, or treating compensation failure as unrecoverable without operator visibility.
 
-**Rationale:** Compensation cannot be guaranteed to succeed. A "refund-payment" step can fail just as a "charge-payment" step can fail. Pretending otherwise leads to silent inconsistencies.
+**Rationale:** Compensation cannot be guaranteed to succeed. A "refund-payment" step can fail just as a "charge-payment" step can fail. However, halting all compensation because one step failed would leave other compensatable steps unattempted, resulting in a worse state than continuing.
 
-The design makes compensation failures visible and actionable:
+The design makes compensation failures visible and actionable while maximizing recovery:
+- The engine continues executing remaining compensation steps even after a failure (best-effort).
+- Each failed compensation step is individually dead-lettered with full error history and step payload.
 - `COMPENSATION_FAILED` is a distinct terminal state, not conflated with `FAILED`.
-- The failed compensation step is placed in the dead-letter queue with full error history and step payload.
 - An alert fires when dead-letter queue depth increases.
-- Operators can inspect the dead-letter item and replay it once the underlying cause is resolved.
+- Operators can inspect each dead-letter item and replay it once the underlying cause is resolved.
+- Dead-letter replay resets the step's attempt count to zero and transitions the execution back to `RUNNING`, giving the step a fresh retry budget.
 
 This is a deliberate choice to surface operational problems rather than hide them. A system that fails loudly and visibly is easier to operate than one that silently corrupts state.
 

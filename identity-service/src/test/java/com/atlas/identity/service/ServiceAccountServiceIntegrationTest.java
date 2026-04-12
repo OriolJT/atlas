@@ -85,7 +85,7 @@ class ServiceAccountServiceIntegrationTest {
         Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
         var request = new CreateApiKeyRequest(sa.serviceAccountId(), expiresAt);
 
-        ApiKeyResponse response = serviceAccountService.generateApiKey(request);
+        ApiKeyResponse response = serviceAccountService.generateApiKey(request, tenantId);
 
         // Raw key is returned on creation
         assertThat(response.rawKey()).isNotNull();
@@ -124,7 +124,7 @@ class ServiceAccountServiceIntegrationTest {
 
         var request = new CreateApiKeyRequest(sa.serviceAccountId(), null);
 
-        assertThatThrownBy(() -> serviceAccountService.generateApiKey(request))
+        assertThatThrownBy(() -> serviceAccountService.generateApiKey(request, tenantId))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not active");
     }
@@ -139,7 +139,7 @@ class ServiceAccountServiceIntegrationTest {
         Instant pastExpiry = Instant.now().minus(1, ChronoUnit.HOURS);
         var request = new CreateApiKeyRequest(sa.serviceAccountId(), pastExpiry);
 
-        ApiKeyResponse response = serviceAccountService.generateApiKey(request);
+        ApiKeyResponse response = serviceAccountService.generateApiKey(request, tenantId);
 
         ApiKey savedKey = apiKeyRepository.findById(response.apiKeyId()).orElseThrow();
         assertThat(savedKey.isExpired()).isTrue();

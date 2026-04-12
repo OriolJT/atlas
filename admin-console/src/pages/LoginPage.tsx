@@ -6,6 +6,7 @@ import { ErrorMessage } from '../components/ErrorMessage'
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [tenantSlug, setTenantSlug] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,7 +17,7 @@ export function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      await login(email, password)
+      await login(tenantSlug, email, password)
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'))
@@ -32,6 +33,24 @@ export function LoginPage() {
           Atlas Admin
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="tenantSlug"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Tenant
+            </label>
+            <input
+              id="tenantSlug"
+              type="text"
+              required
+              autoComplete="organization"
+              value={tenantSlug}
+              onChange={(e) => setTenantSlug(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="e.g. acme"
+            />
+          </div>
           <div>
             <label
               htmlFor="email"

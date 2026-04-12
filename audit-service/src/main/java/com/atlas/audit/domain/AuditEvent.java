@@ -11,6 +11,8 @@ import org.hibernate.annotations.ParamDef;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -56,6 +58,9 @@ public class AuditEvent {
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant occurredAt;
 
+    @Column(name = "ingested_at", updatable = false, insertable = false)
+    private Instant ingestedAt;
+
     protected AuditEvent() {
         // JPA
     }
@@ -77,7 +82,7 @@ public class AuditEvent {
         this.eventType = eventType;
         this.resourceType = resourceType;
         this.resourceId = resourceId;
-        this.payload = payload != null ? payload : Map.of();
+        this.payload = payload != null ? Collections.unmodifiableMap(new HashMap<>(payload)) : Map.of();
         this.correlationId = correlationId;
         this.occurredAt = occurredAt;
     }
@@ -120,5 +125,9 @@ public class AuditEvent {
 
     public Instant getOccurredAt() {
         return occurredAt;
+    }
+
+    public Instant getIngestedAt() {
+        return ingestedAt;
     }
 }

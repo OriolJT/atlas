@@ -2,7 +2,7 @@
 
 ## Overview
 
-Atlas is a multi-tenant distributed platform for durable workflow orchestration and asynchronous event processing. It is composed of four independent services that communicate via Kafka for asynchronous operations and REST for synchronous queries.
+Atlas is a multi-tenant distributed platform for durable workflow orchestration and asynchronous event processing. It is composed of four independent services that communicate via Kafka for asynchronous operations, REST for synchronous queries, and optionally gRPC for low-latency worker-to-workflow step result reporting. An admin console (React/Vite) provides a web UI for operational visibility.
 
 ---
 
@@ -17,6 +17,7 @@ graph TB
         WS[Workflow Service<br/>:8082]
         WK[Worker Service<br/>:8083]
         AS[Audit Service<br/>:8084]
+        AC[Admin Console<br/>:3001]
     end
 
     subgraph Infrastructure
@@ -45,8 +46,12 @@ graph TB
 
     KF -->|steps.execute| WK
     KF -->|steps.result| WS
+    WK -.->|gRPC :9095 steps.result| WS
     KF -->|audit.events| AS
     KF -->|domain.events| WS
+
+    AC -->|REST| IS
+    AC -->|REST| WS
 
     WK -->|lease + heartbeat| RD
     WS -->|delay scheduling| RD
@@ -77,7 +82,7 @@ Atlas uses an orchestration-first architecture. The Workflow Service is the cent
 1. Workflow Service writes an outbox row transactionally alongside the execution state change.
 2. The outbox poller (every 500ms) publishes the `step.execute` command to Kafka.
 3. Worker Service consumes the command, acquires a Redis lease, and executes the step.
-4. Worker publishes the result to `workflow.steps.result`.
+4. Worker publishes the result to `workflow.steps.result` (via Kafka by default, or directly via gRPC on port 9095 when `ATLAS_WORKER_RESULT_TRANSPORT=grpc`).
 5. Workflow Service consumes the result and advances the state machine.
 
 **Why orchestration over choreography:**
@@ -93,7 +98,7 @@ Atlas uses an orchestration-first architecture. The Workflow Service is the cent
 
 ### Identity Service (port 8081)
 
-Handles authentication, tenant management, user management, RBAC, and token lifecycle. Issues JWT access tokens (15 min) and refresh tokens (7 days). Permissions are not embedded in the JWT; each service maintains a local in-memory permission cache bootstrapped from Identity Service on startup and kept warm via `role.permissions_changed` domain events.
+Handles authentication, tenant management, user management, RBAC, and token lifecycle. Issues JWT access tokens (15 min) and refresh tokens (7 days). Login requires `tenantSlug`, `email`, and `password` to scope authentication to a specific tenant. Permissions are not embedded in the JWT; each service maintains a local in-memory permission cache bootstrapped from Identity Service on startup and kept warm via `role.permissions_changed` domain events.
 
 BCrypt strength 12 for password hashing. Account lockout after 5 consecutive failures for 15 minutes.
 
@@ -139,7 +144,9 @@ COMPENSATING → COMPENSATION_FAILED → DEAD_LETTERED
 
 Stateless step executor. No database schema. All durable state belongs to the Workflow Service. Redis is used only for ephemeral lease management.
 
-Consumes `step.execute` commands, acquires a Redis lease using `SET NX EX`, executes the step, and publishes the result. A heartbeat thread extends the lease during execution. If the lease cannot be acquired (another worker holds it), the command is skipped.
+Consumes `step.execute` commands, acquires a Redis lease using `SET NX EX`, executes the step, and publishes the result. Results can be published via Kafka (default) or gRPC (port 9095 on the Workflow Service) for lower latency, controlled by `ATLAS_WORKER_RESULT_TRANSPORT`. A heartbeat thread extends the lease during execution. If the lease cannot be acquired (another worker holds it), the command is skipped.
+
+The `StepResultProcessor` in the Workflow Service respects the `non_retryable` flag on step results. When a worker reports a failure with `non_retryable: true`, the step bypasses retry logic and is immediately dead-lettered regardless of remaining retry budget.
 
 **Step executor types:**
 - `HTTP_ACTION` — HTTP call to a configured URL, timeout-aware via `RestClient`
@@ -155,6 +162,10 @@ Append-only ingestion and queryable storage of audit events. Consumes from the `
 **Database schema:** `audit`  
 **Table:** `audit_events` (audit_event_id, tenant_id, actor_type, actor_id, event_type, resource_type, resource_id, payload, correlation_id, occurred_at)
 
+### Admin Console (port 3001)
+
+A React/Vite single-page application providing operational visibility into Atlas. Communicates with Identity Service and Workflow Service via their REST APIs. Served as a static build behind an nginx container in Docker Compose.
+
 ---
 
 ## Communication Patterns
@@ -166,13 +177,17 @@ All cross-service state changes are communicated via Kafka. Producers in Identit
 | Topic | Producer | Consumer | Partition Key |
 |-------|----------|----------|---------------|
 | `workflow.steps.execute` | Workflow Service | Worker Service | `tenant_id` |
-| `workflow.steps.result` | Worker Service | Workflow Service | `tenant_id` |
+| `workflow.steps.result` | Worker Service | Workflow Service | `tenant_id` (also available via gRPC :9095) |
 | `audit.events` | Identity, Workflow | Audit Service | `tenant_id` |
 | `domain.events` | Identity, Workflow | Any interested service | `tenant_id` |
 
 ### Synchronous (REST)
 
 REST is used for client-facing APIs and for one internal call: Workflow Service calls `GET /api/v1/internal/permissions` on Identity Service at startup to warm its permission cache.
+
+### Synchronous (gRPC)
+
+Worker Service can optionally report step results directly to Workflow Service via gRPC (port 9095) instead of Kafka. This reduces result delivery latency by bypassing the outbox-to-Kafka path. Enabled by setting `ATLAS_WORKER_RESULT_TRANSPORT=grpc` on the Worker Service. The Workflow Service gRPC server is enabled with `ATLAS_GRPC_SERVER_ENABLED=true`.
 
 ---
 

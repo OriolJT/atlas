@@ -9,6 +9,7 @@ Atlas is a multi-tenant distributed platform for durable workflow orchestration,
 ```mermaid
 graph TB
     Client([Client / API Consumer])
+    AC[Admin Console<br/>:3001]
 
     subgraph Atlas Platform
         IS[Identity Service<br/>:8081]
@@ -18,7 +19,7 @@ graph TB
     end
 
     subgraph Infrastructure
-        PG[(PostgreSQL<br/>identity | workflow | audit)]
+        PG[(PostgreSQL<br/>identity, workflow, audit)]
         KF{{Kafka KRaft<br/>:9092}}
         RD[(Redis<br/>:6379)]
     end
@@ -29,6 +30,10 @@ graph TB
         TP[Tempo<br/>:3200]
     end
 
+    Client --> AC
+    AC -->|REST + JWT| IS
+    AC -->|REST + JWT| WS
+    AC -->|REST + JWT| AS
     Client -->|REST + JWT| IS
     Client -->|REST + JWT| WS
     Client -->|REST + JWT| AS
@@ -37,8 +42,8 @@ graph TB
     WS -->|read/write| PG
     AS -->|append-only| PG
 
-    IS -->|outbox → domain.events + audit.events| KF
-    WS -->|outbox → steps.execute + audit.events| KF
+    IS -->|outbox: domain.events, audit.events| KF
+    WS -->|outbox: steps.execute, audit.events| KF
     WK -->|steps.result| KF
 
     KF -->|steps.execute| WK
@@ -46,13 +51,15 @@ graph TB
     KF -->|audit.events| AS
     KF -->|domain.events| WS
 
+    WK -.->|gRPC :9095| WS
+
     WK -->|lease + heartbeat| RD
     WS -->|delay scheduling| RD
 
-    IS -.->|/actuator/prometheus| PR
-    WS -.->|/actuator/prometheus| PR
-    WK -.->|/actuator/prometheus| PR
-    AS -.->|/actuator/prometheus| PR
+    IS -.->|metrics| PR
+    WS -.->|metrics| PR
+    WK -.->|metrics| PR
+    AS -.->|metrics| PR
     PR -.-> GR
     TP -.-> GR
 
@@ -61,7 +68,7 @@ graph TB
     WK -.->|traces| TP
     AS -.->|traces| TP
 
-    WS -->|GET /internal/permissions| IS
+    WS -->|internal permissions| IS
 ```
 
 ## Key Features
@@ -83,11 +90,13 @@ graph TB
 | Framework | Spring Boot 4.0.5 |
 | Database | PostgreSQL 17 |
 | Messaging | Apache Kafka (KRaft mode, no ZooKeeper) |
+| Internal RPC | gRPC + Protocol Buffers |
 | Caching / Leases | Redis 8 |
+| Frontend | React 19 + TypeScript + Vite + Tailwind CSS |
 | Observability | Prometheus + Grafana + Tempo |
 | Build | Multi-module Maven |
 | Testing | JUnit 5 + Testcontainers |
-| Infrastructure | Docker Compose |
+| Infrastructure | Docker Compose, Kubernetes |
 
 ## Quick Start
 
@@ -104,9 +113,18 @@ make up
 make health
 ```
 
-All four services, PostgreSQL, Kafka, Redis, Prometheus, Grafana, and Tempo will be running. Seed data includes a tenant ("Acme Corp"), three users with different roles, and two pre-registered workflow definitions.
+All services (Identity, Workflow, Worker, Audit, Admin Console), PostgreSQL, Kafka, Redis, Prometheus, Grafana, and Tempo will be running. Seed data includes a tenant ("Acme Corp"), three users with different roles, and two pre-registered workflow definitions.
 
-**Default credentials:**
+**Access points:**
+
+| URL | Description |
+|-----|-------------|
+| `http://localhost:3001` | Admin Console |
+| `http://localhost:3000` | Grafana dashboards (admin/admin) |
+| `http://localhost:8081/v3/api-docs` | Identity Service OpenAPI |
+| `http://localhost:8082/v3/api-docs` | Workflow Service OpenAPI |
+
+**Default credentials** (tenant slug: `acme-corp`):
 
 | User | Email | Password | Role |
 |------|-------|----------|------|
@@ -126,6 +144,7 @@ Atlas uses an orchestration-first architecture. The Workflow Service is the cent
 | Workflow Service | 8082 | Workflow definitions, execution engine, state machine, compensation orchestration |
 | Worker Service | 8083 | Stateless step execution with Redis-backed leases and heartbeats |
 | Audit Service | 8084 | Immutable append-only audit trail with filtered queries |
+| Admin Console | 3001 | React SPA for dashboard, workflow management, and monitoring |
 
 ### Infrastructure
 
@@ -153,7 +172,7 @@ Atlas uses an orchestration-first architecture. The Workflow Service is the cent
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/v1/auth/login` | Authenticate user, return JWT + refresh token |
+| POST | `/api/v1/auth/login` | Authenticate user (requires `tenantSlug`, `email`, `password`), return JWT + refresh token |
 | POST | `/api/v1/auth/refresh` | Rotate refresh token, issue new access token |
 | POST | `/api/v1/auth/logout` | Revoke refresh token |
 | POST | `/api/v1/tenants` | Create tenant |
@@ -198,8 +217,8 @@ A 5-step saga with compensation: validate order, reserve inventory, charge payme
 # Authenticate
 TOKEN=$(curl -s http://localhost:8081/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "operator@acme.com", "password": "Atlas2026!"}' \
-  | jq -r '.access_token')
+  -d '{"tenantSlug": "acme-corp", "email": "operator@acme.com", "password": "Atlas2026!"}' \
+  | jq -r '.accessToken')
 
 # Register the workflow definition
 DEFINITION_ID=$(curl -s http://localhost:8082/api/v1/workflow-definitions \
@@ -326,6 +345,8 @@ curl -s "http://localhost:8082/api/v1/workflow-executions/${EXECUTION_ID}" \
 | Tenant data is never accessible across tenant boundaries | Triple enforcement: JWT validation + Hibernate `@Filter` + repository WHERE clause |
 | No event is lost if Kafka is temporarily unavailable | Outbox retains unpublished rows until Kafka publish succeeds |
 | Audit events are never lost, never duplicated | At-least-once delivery + idempotent insert (`ON CONFLICT DO NOTHING`) |
+| Non-retryable failures skip retry budget | `non_retryable` flag in step result bypasses retries, goes directly to dead-letter |
+| Dead-letter replay gives a fresh retry budget | Replay resets `attempt_count` to zero and transitions execution back to `RUNNING` |
 
 ## Project Structure
 
@@ -337,7 +358,7 @@ atlas/
 ├── common/                          # Shared module (events, security, web filters)
 │   └── src/main/java/com/atlas/common/
 │       ├── event/                   # Event envelope, domain event types, outbox entity
-│       ├── security/                # JWT utils, tenant context, permission annotation
+│       ├── security/                # JWT utils, permission annotation
 │       ├── web/                     # Error response, correlation ID filter, pagination
 │       └── domain/                  # Shared value objects (TenantId, UserId, ExecutionId)
 ├── identity-service/                # Port 8081 — Auth, tenants, users, RBAC
@@ -348,6 +369,10 @@ atlas/
 │   └── src/main/java/com/atlas/worker/
 ├── audit-service/                   # Port 8084 — Immutable audit trail
 │   └── src/main/java/com/atlas/audit/
+├── admin-console/                   # Port 3001 — React SPA (Vite + Tailwind)
+│   └── src/
+├── proto/                           # Protocol Buffer definitions for gRPC
+│   └── atlas/
 ├── infra/
 │   ├── docker-compose.yml           # Full stack: services + infra + observability
 │   ├── grafana/                     # Dashboard provisioning (JSON)
@@ -355,6 +380,11 @@ atlas/
 │   ├── kafka/                       # Topic creation scripts
 │   ├── postgres/                    # Schema initialization
 │   └── tempo/                       # Tracing configuration
+├── k8s/                             # Kubernetes manifests for production deployment
+├── docs/                            # Architecture, API docs, tradeoffs, production guide
+├── tests/
+│   ├── e2e/                         # End-to-end test suite
+│   └── load/                        # Load testing scripts
 ├── scripts/                         # seed.sh and dev helpers
 └── examples/
     └── workflows/                   # Demo workflow JSON definitions
@@ -368,6 +398,9 @@ make test
 
 # Build without tests
 make build
+
+# Run end-to-end tests (requires running stack)
+make e2e
 ```
 
 **Test coverage:**
@@ -376,6 +409,7 @@ make build
 - **Integration tests (Testcontainers)** -- Repository tests with real PostgreSQL, Kafka event publishing and consumption, Redis lease acquisition
 - **End-to-end tests** -- Full workflow lifecycle: authenticate, create definition, start execution, verify completion, inspect audit trail
 - **Failure tests** -- Duplicate event delivery (idempotency), stale lease recovery, outbox publication recovery, dead-letter replay
+- **Load tests** -- Performance and throughput testing under concurrent workflow executions
 
 ## Design Decisions and Tradeoffs
 
@@ -385,7 +419,7 @@ make build
 | **Orchestration over choreography** | Centralized state makes debugging, compensation, and timeline reconstruction straightforward. |
 | **Shared DB with tenant scoping over DB-per-tenant** | Sufficient isolation for v1 with less operational overhead. Evolvable to schema-per-tenant. |
 | **Redis for leases and scheduling** | Ephemeral by nature. Lost leases are recovered by timeout detection. Redis failure = temporary stall, not data loss. |
-| **Compensation is best-effort but durable** | Compensation steps can themselves fail. Failures are recorded, dead-lettered, and visible for operator intervention. |
+| **Compensation is best-effort and continues on failure** | All compensation steps are attempted even if some fail. Failures are recorded, dead-lettered, and visible for operator intervention. |
 | **4 services, not more** | Depth over breadth. Each service has real complexity and production-grade implementation. |
 | **HS256 over RS256 for JWT signing** | Simpler key management (shared secret). Evolvable to asymmetric signing when service count grows. |
 | **State machine over replay engine** | No determinism constraint on workflow logic. Recovery reads last persisted state and resumes. Simpler than Temporal-style replay. |
@@ -405,7 +439,16 @@ make build
 | `make down` | Stop everything |
 | `make seed` | Run seed script (create users, definitions) |
 | `make health` | Check health of all services |
+| `make e2e` | Run end-to-end tests |
 
-## License
+## Documentation
 
-MIT
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/architecture.md) | System design, event flows, and service interactions |
+| [API Reference](docs/api.md) | Full endpoint documentation with request/response examples |
+| [Design Tradeoffs](docs/tradeoffs.md) | Rationale behind key architectural decisions |
+| [Local Setup](docs/local-setup.md) | Development environment setup guide |
+| [Demo Guide](docs/demo-guide.md) | Step-by-step walkthrough of demo scenarios |
+| [Production Deployment](docs/production/deployment-guide.md) | Kubernetes deployment and configuration |
+| [Scaling Guide](docs/production/scaling-guide.md) | Performance tuning and horizontal scaling |

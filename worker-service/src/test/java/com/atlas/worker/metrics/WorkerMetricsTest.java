@@ -19,6 +19,10 @@ class WorkerMetricsTest {
     void setUp() {
         registry = new SimpleMeterRegistry();
         metrics = new WorkerMetrics(registry);
+        metrics.registerKnownStepType("HTTP_ACTION");
+        metrics.registerKnownStepType("INTERNAL_COMMAND");
+        metrics.registerKnownStepType("DELAY");
+        metrics.registerKnownStepType("EVENT_WAIT");
     }
 
     @Test

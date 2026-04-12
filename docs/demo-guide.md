@@ -50,7 +50,7 @@ This creates:
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8081/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@acme.com","password":"Atlas2026!"}' \
+  -d '{"tenantSlug":"acme-corp","email":"admin@acme.com","password":"Atlas2026!"}' \
   | jq -r '.access_token')
 
 echo $TOKEN
@@ -209,7 +209,7 @@ curl -s -X POST http://localhost:8082/api/v1/workflow-executions/$INCIDENT_EXEC/
 ```bash
 VIEWER_TOKEN=$(curl -s -X POST http://localhost:8081/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"viewer@acme.com","password":"Atlas2026!"}' \
+  -d '{"tenantSlug":"acme-corp","email":"viewer@acme.com","password":"Atlas2026!"}' \
   | jq -r '.access_token')
 ```
 
@@ -307,7 +307,7 @@ curl -s -X POST http://localhost:8082/api/v1/dead-letter/$DL_ID/replay \
 
 | Action | Command |
 |--------|---------|
-| Get admin token | `curl -s -X POST localhost:8081/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@acme.com","password":"Atlas2026!"}'` |
+| Get admin token | `curl -s -X POST localhost:8081/api/v1/auth/login -H 'Content-Type: application/json' -d '{"tenantSlug":"acme-corp","email":"admin@acme.com","password":"Atlas2026!"}'` |
 | List executions | `curl -s localhost:8082/api/v1/workflow-executions -H "Authorization: Bearer $TOKEN"` |
 | Tail service logs | `docker compose logs -f workflow-service` |
 | Stop the stack | `make down` |

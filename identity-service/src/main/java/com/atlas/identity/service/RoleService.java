@@ -55,9 +55,13 @@ public class RoleService {
     }
 
     @Transactional
-    public Role assignPermissions(UUID roleId, AssignPermissionsRequest request) {
+    public Role assignPermissions(UUID roleId, UUID callerTenantId, AssignPermissionsRequest request) {
         var role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new IllegalArgumentException("Role with id '" + roleId + "' does not exist"));
+
+        if (!role.getTenantId().equals(callerTenantId)) {
+            throw new IllegalArgumentException("Role with id '" + roleId + "' does not exist");
+        }
 
         Set<Permission> permissions = permissionRepository.findByNameIn(request.permissions());
         if (permissions.size() != request.permissions().size()) {

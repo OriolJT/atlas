@@ -22,11 +22,10 @@ class ExecutionStateMachineTest {
             "RUNNING,     COMPLETED",
             "RUNNING,     FAILED",
             "RUNNING,     CANCELED",
-            "RUNNING,     TIMED_OUT",
             "WAITING,     RUNNING",
             "WAITING,     CANCELED",
-            "WAITING,     TIMED_OUT",
             "FAILED,      COMPENSATING",
+            "FAILED,      RUNNING",
             "COMPENSATING,COMPENSATED",
             "COMPENSATING,COMPENSATION_FAILED"
     })
@@ -58,9 +57,10 @@ class ExecutionStateMachineTest {
             "PENDING,            WAITING",
             "RUNNING,            PENDING",
             "RUNNING,            COMPENSATING",
+            "RUNNING,            TIMED_OUT",
             "WAITING,            COMPLETED",
             "WAITING,            FAILED",
-            "FAILED,             RUNNING",
+            "WAITING,            TIMED_OUT",
             "FAILED,             COMPLETED",
             "COMPENSATING,       RUNNING",
             "COMPENSATING,       FAILED"

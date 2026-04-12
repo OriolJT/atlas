@@ -87,8 +87,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 if (tenantId instanceof UUID uuid) {
                     return uuid;
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
                 // Not a details object with tenantId() method
+                log.debug("Reflection fallback failed for authentication details of type {}: {}",
+                        details.getClass().getName(), e.getMessage());
             }
         }
         // Fallback: request attribute (e.g., set by ApiKeyAuthenticationFilter)

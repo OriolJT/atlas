@@ -8,8 +8,10 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Resolves per-tenant rate limits by calling identity-service's internal quota API.
@@ -21,15 +23,25 @@ public class RestTenantQuotaResolver implements TenantQuotaResolver {
 
     private static final Logger log = LoggerFactory.getLogger(RestTenantQuotaResolver.class);
     private static final long CACHE_TTL_MS = 60_000L;
+    private static final int MAX_CACHE_SIZE = 10_000;
 
     private final RestClient restClient;
-    private final ConcurrentHashMap<UUID, CachedQuota> cache = new ConcurrentHashMap<>();
+    private final String internalApiKey;
+    private final Map<UUID, CachedQuota> cache = Collections.synchronizedMap(
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<UUID, CachedQuota> eldest) {
+                    return size() > MAX_CACHE_SIZE;
+                }
+            });
 
     public RestTenantQuotaResolver(
-            @Value("${atlas.identity-service.url:http://localhost:8081}") String identityServiceUrl) {
+            @Value("${atlas.identity-service.url:http://localhost:8081}") String identityServiceUrl,
+            @Value("${atlas.internal.api-key}") String internalApiKey) {
         this.restClient = RestClient.builder()
                 .baseUrl(identityServiceUrl)
                 .build();
+        this.internalApiKey = internalApiKey;
     }
 
     @Override
@@ -42,6 +54,7 @@ public class RestTenantQuotaResolver implements TenantQuotaResolver {
         try {
             TenantQuotaResponse response = restClient.get()
                     .uri("/api/v1/internal/tenants/{tenantId}/quotas", tenantId)
+                    .header("X-Internal-Api-Key", internalApiKey)
                     .retrieve()
                     .body(TenantQuotaResponse.class);
 

@@ -36,7 +36,7 @@ atlas:
   grpc:
     client:
       workflow-host: ${ATLAS_GRPC_WORKFLOW_HOST:localhost}
-      workflow-port: ${ATLAS_GRPC_WORKFLOW_PORT:9090}
+      workflow-port: ${ATLAS_GRPC_WORKFLOW_PORT:9095}
 management:
   endpoints:
     web:
@@ -44,13 +44,13 @@ management:
         include: health,prometheus,info
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
   metrics:
     tags:
       application: worker-service
   tracing:
     sampling:
-      probability: 1.0
+      probability: 0.1
   otlp:
     tracing:
       endpoint: ${ATLAS_TEMPO_ENDPOINT:http://localhost:4318/v1/traces}

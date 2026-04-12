@@ -6,6 +6,7 @@ import com.atlas.grpc.workflow.v1.StepResultRequest;
 import com.atlas.grpc.workflow.v1.StepResultResponse;
 import com.atlas.grpc.workflow.v1.StepResultServiceGrpc;
 import com.atlas.worker.executor.StepResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.slf4j.Logger;
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class StepResultGrpcClient {
 
     private static final Logger log = LoggerFactory.getLogger(StepResultGrpcClient.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ManagedChannel channel;
     private final StepResultServiceGrpc.StepResultServiceBlockingV2Stub blockingStub;
@@ -55,8 +57,7 @@ public class StepResultGrpcClient {
 
         if (result.output() != null) {
             try {
-                String outputJson = new com.fasterxml.jackson.databind.ObjectMapper()
-                        .writeValueAsString(result.output());
+                String outputJson = OBJECT_MAPPER.writeValueAsString(result.output());
                 requestBuilder.setOutputJson(outputJson);
             } catch (Exception e) {
                 log.warn("Failed to serialize output to JSON for stepExecutionId={}",

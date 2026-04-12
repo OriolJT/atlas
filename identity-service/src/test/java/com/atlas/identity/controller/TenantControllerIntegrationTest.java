@@ -73,23 +73,31 @@ class TenantControllerIntegrationTest {
 
     @Test
     void getTenant_existingId_returnsTenant() {
-        var request = new CreateTenantRequest("Beta Inc", "beta-inc");
+        String slug = "beta-inc-" + UUID.randomUUID().toString().substring(0, 8);
+        var request = new CreateTenantRequest("Beta Inc", slug);
         ResponseEntity<TenantResponse> createResponse = restTemplate.postForEntity(
                 "/api/v1/tenants", request, TenantResponse.class);
 
         assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         UUID tenantId = createResponse.getBody().tenantId();
 
+        // Generate a JWT for this specific tenant so the scoping check passes
+        String tenantToken = jwtTokenProvider.generateAccessToken(
+                UUID.randomUUID(), tenantId, List.of("TENANT_ADMIN"));
+        HttpHeaders tenantHeaders = new HttpHeaders();
+        tenantHeaders.setBearerAuth(tenantToken);
+        tenantHeaders.set("Content-Type", "application/json");
+
         ResponseEntity<TenantResponse> getResponse = restTemplate.exchange(
                 "/api/v1/tenants/" + tenantId, HttpMethod.GET,
-                new HttpEntity<>(authHeaders()), TenantResponse.class);
+                new HttpEntity<>(tenantHeaders), TenantResponse.class);
 
         assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         TenantResponse body = getResponse.getBody();
         assertThat(body).isNotNull();
         assertThat(body.tenantId()).isEqualTo(tenantId);
         assertThat(body.name()).isEqualTo("Beta Inc");
-        assertThat(body.slug()).isEqualTo("beta-inc");
+        assertThat(body.slug()).isEqualTo(slug);
     }
 
     @Test

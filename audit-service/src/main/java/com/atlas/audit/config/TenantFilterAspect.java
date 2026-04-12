@@ -21,7 +21,7 @@ public class TenantFilterAspect {
         this.tenantContext = tenantContext;
     }
 
-    @Before("execution(* com.atlas.audit.repository.*.*(..))")
+    @Before("execution(* com.atlas.audit.repository.*.find*(..))")
     public void enableTenantFilter() {
         try {
             if (tenantContext.isSet()) {

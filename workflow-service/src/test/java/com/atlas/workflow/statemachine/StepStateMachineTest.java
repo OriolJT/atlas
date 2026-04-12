@@ -1,7 +1,6 @@
 package com.atlas.workflow.statemachine;
 
 import com.atlas.workflow.domain.StepStatus;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -9,13 +8,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class StepStateMachineTest {
-
-    private StepStateMachine stateMachine;
-
-    @BeforeEach
-    void setUp() {
-        stateMachine = new StepStateMachine();
-    }
 
     @ParameterizedTest(name = "{0} -> {1} should be valid")
     @CsvSource({
@@ -41,7 +33,7 @@ class StepStateMachineTest {
         StepStatus fromStatus = StepStatus.valueOf(from.trim());
         StepStatus toStatus = StepStatus.valueOf(to.trim());
 
-        assertThat(stateMachine.canTransition(fromStatus, toStatus)).isTrue();
+        assertThat(StepStateMachine.canTransition(fromStatus, toStatus)).isTrue();
     }
 
     @ParameterizedTest(name = "{0} -> {1} should be invalid")
@@ -61,7 +53,7 @@ class StepStateMachineTest {
         StepStatus fromStatus = StepStatus.valueOf(from.trim());
         StepStatus toStatus = StepStatus.valueOf(to.trim());
 
-        assertThat(stateMachine.canTransition(fromStatus, toStatus)).isFalse();
+        assertThat(StepStateMachine.canTransition(fromStatus, toStatus)).isFalse();
     }
 
     @ParameterizedTest(name = "validate({0} -> {1}) should throw")
@@ -74,7 +66,7 @@ class StepStateMachineTest {
         StepStatus fromStatus = StepStatus.valueOf(from.trim());
         StepStatus toStatus = StepStatus.valueOf(to.trim());
 
-        assertThatThrownBy(() -> stateMachine.validate(fromStatus, toStatus))
+        assertThatThrownBy(() -> StepStateMachine.validate(fromStatus, toStatus))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Invalid step transition");
     }

@@ -38,7 +38,6 @@ public class StepResultProcessor {
     private final WorkflowExecutionRepository executionRepository;
     private final WorkflowDefinitionRepository definitionRepository;
     private final OutboxRepository outboxRepository;
-    private final StepStateMachine stepStateMachine;
     private final CompensationEngine compensationEngine;
     private final DeadLetterItemRepository deadLetterItemRepository;
     private final DelayScheduler delayScheduler;
@@ -47,7 +46,6 @@ public class StepResultProcessor {
                                WorkflowExecutionRepository executionRepository,
                                WorkflowDefinitionRepository definitionRepository,
                                OutboxRepository outboxRepository,
-                               StepStateMachine stepStateMachine,
                                CompensationEngine compensationEngine,
                                DeadLetterItemRepository deadLetterItemRepository,
                                DelayScheduler delayScheduler) {
@@ -55,7 +53,6 @@ public class StepResultProcessor {
         this.executionRepository = executionRepository;
         this.definitionRepository = definitionRepository;
         this.outboxRepository = outboxRepository;
-        this.stepStateMachine = stepStateMachine;
         this.compensationEngine = compensationEngine;
         this.deadLetterItemRepository = deadLetterItemRepository;
         this.delayScheduler = delayScheduler;
@@ -116,9 +113,13 @@ public class StepResultProcessor {
             return;
         }
 
+        Boolean nonRetryable = resultPayload.containsKey("non_retryable")
+                ? Boolean.TRUE.equals(resultPayload.get("non_retryable"))
+                : false;
+
         switch (outcome) {
             case "SUCCEEDED" -> handleSucceeded(step, execution, output);
-            case "FAILED" -> handleFailed(step, execution, error);
+            case "FAILED" -> handleFailed(step, execution, error, nonRetryable);
             case "DELAY_REQUESTED" -> handleDelayRequested(step, delayMs);
             case "WAITING" -> handleWaiting(step, execution);
             default -> log.warn("Unknown outcome '{}' for step {}", outcome, stepExecutionId);
@@ -133,7 +134,7 @@ public class StepResultProcessor {
             return;
         }
 
-        stepStateMachine.validate(step.getStatus(), StepStatus.SUCCEEDED);
+        StepStateMachine.validate(step.getStatus(), StepStatus.SUCCEEDED);
         step.transitionTo(StepStatus.SUCCEEDED);
         step.setOutputJson(output);
         stepExecutionRepository.save(step);
@@ -202,7 +203,8 @@ public class StepResultProcessor {
         }
     }
 
-    private void handleFailed(StepExecution step, WorkflowExecution execution, String error) {
+    private void handleFailed(StepExecution step, WorkflowExecution execution, String error,
+                              boolean nonRetryable) {
         if (step.isCompensation()) {
             // Delegate to CompensationEngine
             compensationEngine.handleCompensationStepResult(step, execution, false, error);
@@ -210,17 +212,17 @@ public class StepResultProcessor {
         }
 
         // Transition RUNNING -> FAILED first
-        stepStateMachine.validate(step.getStatus(), StepStatus.FAILED);
+        StepStateMachine.validate(step.getStatus(), StepStatus.FAILED);
         step.transitionTo(StepStatus.FAILED);
         step.setErrorMessage(error);
         stepExecutionRepository.save(step);
 
-        if (step.getAttemptCount() < step.getMaxAttempts()) {
+        if (!nonRetryable && step.getAttemptCount() < step.getMaxAttempts()) {
             // Retry with exponential backoff
             long backoffMs = calculateBackoff(step.getAttemptCount());
             Instant nextRetryAt = Instant.now().plusMillis(backoffMs);
 
-            stepStateMachine.validate(step.getStatus(), StepStatus.RETRY_SCHEDULED);
+            StepStateMachine.validate(step.getStatus(), StepStatus.RETRY_SCHEDULED);
             step.scheduleRetry(nextRetryAt);
             stepExecutionRepository.save(step);
 
@@ -229,7 +231,7 @@ public class StepResultProcessor {
                     step.getAttemptCount(), step.getMaxAttempts());
         } else {
             // No retries left -> dead-letter and start compensation
-            stepStateMachine.validate(step.getStatus(), StepStatus.DEAD_LETTERED);
+            StepStateMachine.validate(step.getStatus(), StepStatus.DEAD_LETTERED);
             step.transitionTo(StepStatus.DEAD_LETTERED);
             stepExecutionRepository.save(step);
 
@@ -261,7 +263,7 @@ public class StepResultProcessor {
         Instant wakeUp = Instant.now().plusMillis(delay);
 
         // RUNNING -> RETRY_SCHEDULED directly (delay is not a failure)
-        stepStateMachine.validate(step.getStatus(), StepStatus.RETRY_SCHEDULED);
+        StepStateMachine.validate(step.getStatus(), StepStatus.RETRY_SCHEDULED);
         step.scheduleRetry(wakeUp);
         stepExecutionRepository.save(step);
 
@@ -273,7 +275,7 @@ public class StepResultProcessor {
     }
 
     private void handleWaiting(StepExecution step, WorkflowExecution execution) {
-        stepStateMachine.validate(step.getStatus(), StepStatus.WAITING);
+        StepStateMachine.validate(step.getStatus(), StepStatus.WAITING);
         step.transitionTo(StepStatus.WAITING);
         stepExecutionRepository.save(step);
 

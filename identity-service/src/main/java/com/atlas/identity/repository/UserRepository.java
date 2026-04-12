@@ -14,10 +14,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByTenantIdAndEmail(UUID tenantId, String email);
 
-    Optional<User> findByEmail(String email);
-
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.email = :email")
     Optional<User> findByEmailWithRoles(@Param("email") String email);
+
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.tenantId = :tenantId AND u.email = :email")
+    Optional<User> findByTenantIdAndEmailWithRoles(@Param("tenantId") UUID tenantId, @Param("email") String email);
 
     Optional<User> findByTenantIdAndUserId(UUID tenantId, UUID userId);
 

@@ -23,4 +23,8 @@ public record DomainEvent(
     public static DomainEvent create(String eventType, UUID tenantId, UUID correlationId, UUID causationId, String payload) {
         return new DomainEvent(UUID.randomUUID(), eventType, Instant.now(), tenantId, correlationId, causationId, UUID.randomUUID().toString(), payload);
     }
+
+    public static DomainEvent create(String eventType, UUID tenantId, UUID correlationId, UUID causationId, String idempotencyKey, String payload) {
+        return new DomainEvent(UUID.randomUUID(), eventType, Instant.now(), tenantId, correlationId, causationId, idempotencyKey, payload);
+    }
 }

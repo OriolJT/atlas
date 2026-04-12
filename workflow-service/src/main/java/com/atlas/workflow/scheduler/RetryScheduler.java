@@ -8,6 +8,7 @@ import com.atlas.workflow.repository.StepExecutionRepository;
 import com.atlas.workflow.statemachine.StepStateMachine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,20 +27,17 @@ public class RetryScheduler {
 
     private final StepExecutionRepository stepExecutionRepository;
     private final OutboxRepository outboxRepository;
-    private final StepStateMachine stepStateMachine;
 
     public RetryScheduler(StepExecutionRepository stepExecutionRepository,
-                          OutboxRepository outboxRepository,
-                          StepStateMachine stepStateMachine) {
+                          OutboxRepository outboxRepository) {
         this.stepExecutionRepository = stepExecutionRepository;
         this.outboxRepository = outboxRepository;
-        this.stepStateMachine = stepStateMachine;
     }
 
     @Scheduled(fixedDelay = 1000)
     @Transactional
     public void retryDueSteps() {
-        List<StepExecution> dueSteps = stepExecutionRepository.findDueForRetry(Instant.now());
+        List<StepExecution> dueSteps = stepExecutionRepository.findDueForRetry(Instant.now(), PageRequest.of(0, 100));
         if (dueSteps.isEmpty()) {
             return;
         }
@@ -52,7 +50,7 @@ public class RetryScheduler {
     }
 
     private void retryStep(StepExecution step) {
-        stepStateMachine.validate(step.getStatus(), StepStatus.PENDING);
+        StepStateMachine.validate(step.getStatus(), StepStatus.PENDING);
         step.transitionTo(StepStatus.PENDING);
         stepExecutionRepository.save(step);
 

@@ -2,6 +2,7 @@ package com.atlas.identity.controller;
 
 import com.atlas.identity.dto.CreateTenantRequest;
 import com.atlas.identity.dto.TenantResponse;
+import com.atlas.identity.security.TenantContext;
 import com.atlas.identity.service.TenantService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,9 +25,11 @@ import java.util.UUID;
 public class TenantController {
 
     private final TenantService tenantService;
+    private final TenantContext tenantContext;
 
-    public TenantController(TenantService tenantService) {
+    public TenantController(TenantService tenantService, TenantContext tenantContext) {
         this.tenantService = tenantService;
+        this.tenantContext = tenantContext;
     }
 
     @Operation(summary = "Create tenant", description = "Provision a new tenant with an isolated namespace")
@@ -46,6 +49,9 @@ public class TenantController {
     @ApiResponse(responseCode = "404", description = "Tenant not found")
     @GetMapping("/{id}")
     public ResponseEntity<TenantResponse> getTenant(@PathVariable UUID id) {
+        if (tenantContext.isSet() && !id.equals(tenantContext.getTenantId())) {
+            return ResponseEntity.notFound().build();
+        }
         return tenantService.findById(id)
                 .map(TenantResponse::from)
                 .map(ResponseEntity::ok)

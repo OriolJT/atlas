@@ -47,10 +47,15 @@ public class ServiceAccountService {
     }
 
     @Transactional
-    public ApiKeyResponse generateApiKey(CreateApiKeyRequest request) {
+    public ApiKeyResponse generateApiKey(CreateApiKeyRequest request, UUID callerTenantId) {
         ServiceAccount serviceAccount = serviceAccountRepository.findById(request.serviceAccountId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Service account not found: " + request.serviceAccountId()));
+
+        if (!serviceAccount.getTenantId().equals(callerTenantId)) {
+            throw new IllegalArgumentException(
+                    "Service account not found: " + request.serviceAccountId());
+        }
 
         if (!serviceAccount.isActive()) {
             throw new IllegalStateException("Service account is not active");

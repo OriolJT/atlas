@@ -43,13 +43,15 @@ class AuthControllerIntegrationTest {
     private JwtTokenProvider jwtTokenProvider;
 
     private UUID tenantId;
+    private String tenantSlug;
     private String userEmail;
     private String userPassword;
 
     @BeforeEach
     void setUp() {
         String uniqueId = UUID.randomUUID().toString().substring(0, 8);
-        var tenantRequest = new CreateTenantRequest("Auth Test Tenant " + uniqueId, "auth-test-" + uniqueId);
+        tenantSlug = "auth-test-" + uniqueId;
+        var tenantRequest = new CreateTenantRequest("Auth Test Tenant " + uniqueId, tenantSlug);
         ResponseEntity<TenantResponse> tenantResponse = restTemplate.postForEntity(
                 "/api/v1/tenants", tenantRequest, TenantResponse.class);
         assertThat(tenantResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -73,7 +75,7 @@ class AuthControllerIntegrationTest {
 
     @Test
     void login_validCredentials_returnsTokens() {
-        var loginRequest = new LoginRequest(userEmail, userPassword);
+        var loginRequest = new LoginRequest(tenantSlug, userEmail, userPassword);
 
         ResponseEntity<LoginResponse> response = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, LoginResponse.class);
@@ -89,7 +91,7 @@ class AuthControllerIntegrationTest {
 
     @Test
     void login_invalidPassword_returns401() {
-        var loginRequest = new LoginRequest(userEmail, "WrongPassword1");
+        var loginRequest = new LoginRequest(tenantSlug, userEmail, "WrongPassword1");
 
         ResponseEntity<String> response = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, String.class);
@@ -100,7 +102,7 @@ class AuthControllerIntegrationTest {
 
     @Test
     void login_nonExistentUser_returns401() {
-        var loginRequest = new LoginRequest("nobody@example.com", "SomePassword1");
+        var loginRequest = new LoginRequest(tenantSlug, "nobody@example.com", "SomePassword1");
 
         ResponseEntity<String> response = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, String.class);
@@ -112,12 +114,12 @@ class AuthControllerIntegrationTest {
     void login_accountLockedAfter5Failures_returns423() {
         // Fail 5 times to trigger lockout
         for (int i = 0; i < 5; i++) {
-            var loginRequest = new LoginRequest(userEmail, "WrongPassword1");
+            var loginRequest = new LoginRequest(tenantSlug, userEmail, "WrongPassword1");
             restTemplate.postForEntity("/api/v1/auth/login", loginRequest, String.class);
         }
 
         // 6th attempt should get locked response
-        var loginRequest = new LoginRequest(userEmail, userPassword);
+        var loginRequest = new LoginRequest(tenantSlug, userEmail, userPassword);
         ResponseEntity<String> response = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, String.class);
 
@@ -128,7 +130,7 @@ class AuthControllerIntegrationTest {
     @Test
     void refresh_validToken_returnsNewTokens() {
         // Login first
-        var loginRequest = new LoginRequest(userEmail, userPassword);
+        var loginRequest = new LoginRequest(tenantSlug, userEmail, userPassword);
         ResponseEntity<LoginResponse> loginResponse = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, LoginResponse.class);
         assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -151,7 +153,7 @@ class AuthControllerIntegrationTest {
     @Test
     void refresh_usedToken_returns401() {
         // Login first
-        var loginRequest = new LoginRequest(userEmail, userPassword);
+        var loginRequest = new LoginRequest(tenantSlug, userEmail, userPassword);
         ResponseEntity<LoginResponse> loginResponse = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, LoginResponse.class);
         assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -173,7 +175,7 @@ class AuthControllerIntegrationTest {
     @Test
     void logout_revokesToken_subsequentRefreshFails() {
         // Login first
-        var loginRequest = new LoginRequest(userEmail, userPassword);
+        var loginRequest = new LoginRequest(tenantSlug, userEmail, userPassword);
         ResponseEntity<LoginResponse> loginResponse = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, LoginResponse.class);
         assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);

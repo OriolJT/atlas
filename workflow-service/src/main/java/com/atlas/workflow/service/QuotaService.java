@@ -12,10 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Enforces per-tenant quotas by fetching limits from identity-service and
@@ -39,6 +40,8 @@ public class QuotaService {
     private static final List<ExecutionStatus> ACTIVE_STATUSES =
             List.of(ExecutionStatus.RUNNING, ExecutionStatus.PENDING, ExecutionStatus.WAITING);
 
+    private static final int MAX_CACHE_SIZE = 10_000;
+
     /** Cache entry: quota response + the instant it was fetched. */
     private record CacheEntry(TenantQuotaResponse quota, Instant fetchedAt) {
         boolean isExpired() {
@@ -46,7 +49,13 @@ public class QuotaService {
         }
     }
 
-    private final Map<UUID, CacheEntry> cache = new ConcurrentHashMap<>();
+    private final Map<UUID, CacheEntry> cache = Collections.synchronizedMap(
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<UUID, CacheEntry> eldest) {
+                    return size() > MAX_CACHE_SIZE;
+                }
+            });
 
     private final RestClient restClient;
     private final WorkflowDefinitionRepository definitionRepository;
@@ -55,6 +64,7 @@ public class QuotaService {
     private final int defaultMaxDefinitions;
     private final int defaultMaxExecutionsPerMinute;
     private final int defaultMaxConcurrentExecutions;
+    private final String internalApiKey;
 
     public QuotaService(
             RestClient.Builder restClientBuilder,
@@ -63,7 +73,8 @@ public class QuotaService {
             WorkflowExecutionRepository executionRepository,
             @Value("${atlas.quota.default-max-definitions:100}") int defaultMaxDefinitions,
             @Value("${atlas.quota.default-max-executions-per-minute:60}") int defaultMaxExecutionsPerMinute,
-            @Value("${atlas.quota.default-max-concurrent-executions:10}") int defaultMaxConcurrentExecutions) {
+            @Value("${atlas.quota.default-max-concurrent-executions:10}") int defaultMaxConcurrentExecutions,
+            @Value("${atlas.internal.api-key}") String internalApiKey) {
         this.restClient = restClientBuilder
                 .baseUrl(identityServiceUrl)
                 .build();
@@ -72,6 +83,7 @@ public class QuotaService {
         this.defaultMaxDefinitions = defaultMaxDefinitions;
         this.defaultMaxExecutionsPerMinute = defaultMaxExecutionsPerMinute;
         this.defaultMaxConcurrentExecutions = defaultMaxConcurrentExecutions;
+        this.internalApiKey = internalApiKey;
     }
 
     /**
@@ -142,6 +154,7 @@ public class QuotaService {
         try {
             TenantQuotaResponse response = restClient.get()
                     .uri("/api/v1/internal/tenants/{tenantId}/quotas", tenantId)
+                    .header("X-Internal-Api-Key", internalApiKey)
                     .retrieve()
                     .body(TenantQuotaResponse.class);
             if (response != null) {

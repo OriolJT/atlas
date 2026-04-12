@@ -4,7 +4,6 @@ import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.repository.OutboxRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -42,7 +41,8 @@ public class OutboxPublisher {
 
     @Scheduled(fixedDelay = 500)
     public void pollAndPublish() {
-        List<OutboxEvent> batch = outboxRepository.findUnpublishedBatch(PageRequest.of(0, BATCH_SIZE));
+        List<OutboxEvent> batch = transactionTemplate.execute(status ->
+                outboxRepository.findUnpublishedBatchForUpdate(BATCH_SIZE));
         for (OutboxEvent event : batch) {
             try {
                 kafkaTemplate.send(event.getTopic(), event.getTenantId().toString(), event.getPayload())

@@ -104,7 +104,7 @@ ORDER_FULFILLMENT_DEF_ID="c0000000-0000-0000-0000-000000000001"
 test_case "Authentication"
 
 LOGIN_RESP=$(http_req POST "$BASE_URL_IDENTITY/api/v1/auth/login" "" \
-  '{"email":"admin@acme.com","password":"Atlas2026!"}')
+  '{"tenantSlug":"acme-corp","email":"admin@acme.com","password":"Atlas2026!"}')
 LOGIN_HTTP=$(echo "$LOGIN_RESP" | tail -1)
 LOGIN_BODY=$(echo "$LOGIN_RESP" | head -1)
 assert_status "200" "$LOGIN_HTTP" "Login as admin"
@@ -117,7 +117,7 @@ fi
 
 # Invalid credentials → 401
 BAD_RESP=$(http_req POST "$BASE_URL_IDENTITY/api/v1/auth/login" "" \
-  '{"email":"admin@acme.com","password":"wrongpassword"}')
+  '{"tenantSlug":"acme-corp","email":"admin@acme.com","password":"wrongpassword"}')
 BAD_HTTP=$(echo "$BAD_RESP" | tail -1)
 assert_status "401" "$BAD_HTTP" "Login with wrong password is rejected"
 
@@ -213,7 +213,7 @@ fi
 test_case "RBAC Enforcement"
 
 VIEWER_LOGIN=$(http_req POST "$BASE_URL_IDENTITY/api/v1/auth/login" "" \
-  '{"email":"viewer@acme.com","password":"Atlas2026!"}')
+  '{"tenantSlug":"acme-corp","email":"viewer@acme.com","password":"Atlas2026!"}')
 VIEWER_HTTP=$(echo "$VIEWER_LOGIN" | tail -1)
 assert_status "200" "$VIEWER_HTTP" "Login as viewer@acme.com"
 

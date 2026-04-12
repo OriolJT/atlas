@@ -6,6 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: atlas
 data:
+  SPRING_PROFILES_ACTIVE: "production"
   ATLAS_DB_HOST: "postgres"
   ATLAS_DB_PORT: "5432"
   ATLAS_DB_NAME: "atlas"

@@ -95,7 +95,7 @@ info "Authenticating as admin@acme.com ..."
 
 LOGIN_RESPONSE=$(post_json_no_auth \
   "$IDENTITY_URL/api/v1/auth/login" \
-  '{"email":"admin@acme.com","password":"Atlas2026!"}')
+  '{"tenantSlug":"acme-corp","email":"admin@acme.com","password":"Atlas2026!"}')
 
 ADMIN_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
 

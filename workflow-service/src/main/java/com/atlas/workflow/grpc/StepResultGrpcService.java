@@ -6,6 +6,7 @@ import com.atlas.grpc.workflow.v1.StepResultRequest;
 import com.atlas.grpc.workflow.v1.StepResultResponse;
 import com.atlas.grpc.workflow.v1.StepResultServiceGrpc;
 import com.atlas.workflow.service.StepResultProcessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class StepResultGrpcService extends StepResultServiceGrpc.StepResultServiceImplBase {
 
     private static final Logger log = LoggerFactory.getLogger(StepResultGrpcService.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final StepResultProcessor stepResultProcessor;
 
@@ -90,8 +92,7 @@ public class StepResultGrpcService extends StepResultServiceGrpc.StepResultServi
             // Parse the JSON string into a Map for the processor
             try {
                 @SuppressWarnings("unchecked")
-                Map<String, Object> output = new com.fasterxml.jackson.databind.ObjectMapper()
-                        .readValue(request.getOutputJson(), Map.class);
+                Map<String, Object> output = MAPPER.readValue(request.getOutputJson(), Map.class);
                 payload.put("output", output);
             } catch (Exception e) {
                 log.warn("Failed to parse output_json for stepExecutionId={}, treating as raw string",

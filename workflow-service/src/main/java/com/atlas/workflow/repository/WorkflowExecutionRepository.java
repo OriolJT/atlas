@@ -18,8 +18,6 @@ public interface WorkflowExecutionRepository extends JpaRepository<WorkflowExecu
 
     List<WorkflowExecution> findByTenantIdAndStatus(UUID tenantId, ExecutionStatus status);
 
-    List<WorkflowExecution> findByDefinitionId(UUID definitionId);
-
     long countByTenantIdAndCreatedAtAfter(UUID tenantId, Instant since);
 
     @Query("SELECT COUNT(e) FROM WorkflowExecution e WHERE e.tenantId = :tenantId AND e.status IN :statuses")

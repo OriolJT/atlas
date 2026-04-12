@@ -1,0 +1,12 @@
+.git
+.idea
+.vscode
+infra/
+k8s/
+docs/
+tests/
+admin-console/
+*.md
+target/
+.env
+*.env

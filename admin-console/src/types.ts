@@ -1,14 +1,20 @@
 // --- Auth --------------------------------------------------------------------
 
 export interface LoginRequest {
+  tenantSlug: string
   email: string
   password: string
 }
 
 export interface LoginResponse {
-  access_token: string
-  refresh_token: string
-  expires_in: number
+  accessToken: string
+  refreshToken: string
+  userId: string
+  tenantId: string
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string
 }
 
 // --- Workflow Definitions ----------------------------------------------------

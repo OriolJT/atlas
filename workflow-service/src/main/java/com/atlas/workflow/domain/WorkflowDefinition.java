@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -55,6 +56,10 @@ public class WorkflowDefinition {
 
     @Column(name = "published_at")
     private Instant publishedAt;
+
+    @Version
+    @Column(name = "optimistic_lock_version")
+    private Long optimisticLockVersion;
 
     protected WorkflowDefinition() {
         // JPA

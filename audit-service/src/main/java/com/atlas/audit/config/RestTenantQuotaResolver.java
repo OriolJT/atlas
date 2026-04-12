@@ -46,6 +46,10 @@ public class RestTenantQuotaResolver implements TenantQuotaResolver {
                     .body(TenantQuotaResponse.class);
 
             int rpm = (response != null) ? response.maxApiRequestsPerMinute() : defaultRpm;
+            if (cache.size() > 10_000) {
+                log.warn("Quota cache exceeded 10000 entries, clearing to prevent unbounded growth");
+                cache.clear();
+            }
             cache.put(tenantId, new CachedQuota(rpm, System.currentTimeMillis() + CACHE_TTL_MS));
             return rpm;
         } catch (Exception e) {

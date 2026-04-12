@@ -22,7 +22,7 @@ JWT payload includes `sub` (user ID), `tenant_id`, `roles`, `iat`, and `exp`. To
 
 | Method | Path | Auth | Permission | Description |
 |--------|------|------|------------|-------------|
-| POST | `/api/v1/auth/login` | None | — | Authenticate, receive JWT + refresh token |
+| POST | `/api/v1/auth/login` | None | — | Authenticate with tenantSlug + email + password, receive JWT + refresh token |
 | POST | `/api/v1/auth/refresh` | None | — | Rotate refresh token, receive new access token |
 | POST | `/api/v1/auth/logout` | Bearer | — | Revoke refresh token |
 
@@ -31,6 +31,7 @@ JWT payload includes `sub` (user ID), `tenant_id`, `roles`, `iat`, and `exp`. To
 Request:
 ```json
 {
+  "tenantSlug": "acme-corp",
   "email": "admin@acme.com",
   "password": "Atlas2026!"
 }

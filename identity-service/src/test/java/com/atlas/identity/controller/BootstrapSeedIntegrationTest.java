@@ -39,7 +39,7 @@ class BootstrapSeedIntegrationTest {
 
     @Test
     void loginAsAdmin_withSeedCredentials_returnsValidJwt() {
-        var loginRequest = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        var loginRequest = new LoginRequest("acme-corp", ADMIN_EMAIL, ADMIN_PASSWORD);
 
         ResponseEntity<LoginResponse> response = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, LoginResponse.class);
@@ -55,7 +55,7 @@ class BootstrapSeedIntegrationTest {
 
     @Test
     void loginAsAdmin_jwtContainsCorrectClaims() {
-        var loginRequest = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        var loginRequest = new LoginRequest("acme-corp", ADMIN_EMAIL, ADMIN_PASSWORD);
 
         ResponseEntity<LoginResponse> response = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, LoginResponse.class);
@@ -74,7 +74,7 @@ class BootstrapSeedIntegrationTest {
 
     @Test
     void loginAsAdmin_wrongPassword_returns401() {
-        var loginRequest = new LoginRequest(ADMIN_EMAIL, "WrongPassword!");
+        var loginRequest = new LoginRequest("acme-corp", ADMIN_EMAIL, "WrongPassword!");
 
         ResponseEntity<String> response = restTemplate.postForEntity(
                 "/api/v1/auth/login", loginRequest, String.class);

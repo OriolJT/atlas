@@ -52,11 +52,13 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker images (multi-stage, builds from source)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker images (multi-stage, with GHA cache)
         run: |
-          docker build --target identity -t atlas-identity-service:latest .
-          docker build --target workflow -t atlas-workflow-service:latest .
-          docker build --target worker -t atlas-worker-service:latest .
-          docker build --target audit -t atlas-audit-service:latest .
+          docker buildx build --target identity -t atlas-identity-service:latest --cache-from type=gha --cache-to type=gha,mode=max --load .
+          docker buildx build --target workflow -t atlas-workflow-service:latest --cache-from type=gha --cache-to type=gha,mode=max --load .
+          docker buildx build --target worker -t atlas-worker-service:latest --cache-from type=gha --cache-to type=gha,mode=max --load .
+          docker buildx build --target audit -t atlas-audit-service:latest --cache-from type=gha --cache-to type=gha,mode=max --load .
       - name: Verify images
         run: docker images | grep atlas

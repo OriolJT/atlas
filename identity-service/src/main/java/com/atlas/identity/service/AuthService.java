@@ -4,11 +4,13 @@ import com.atlas.common.event.EventTypes;
 import com.atlas.identity.domain.OutboxEvent;
 import com.atlas.identity.domain.RefreshToken;
 import com.atlas.identity.domain.Role;
+import com.atlas.identity.domain.Tenant;
 import com.atlas.identity.domain.User;
 import com.atlas.identity.dto.LoginRequest;
 import com.atlas.identity.dto.LoginResponse;
 import com.atlas.identity.repository.OutboxRepository;
 import com.atlas.identity.repository.RefreshTokenRepository;
+import com.atlas.identity.repository.TenantRepository;
 import com.atlas.identity.repository.UserRepository;
 import com.atlas.identity.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +27,7 @@ import java.util.Map;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final TenantRepository tenantRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -34,6 +37,7 @@ public class AuthService {
 
     public AuthService(
             UserRepository userRepository,
+            TenantRepository tenantRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenProvider jwtTokenProvider,
@@ -41,6 +45,7 @@ public class AuthService {
             @Value("${atlas.security.max-failed-attempts}") int maxFailedAttempts,
             @Value("${atlas.security.lockout-duration-minutes}") int lockoutDurationMinutes) {
         this.userRepository = userRepository;
+        this.tenantRepository = tenantRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -58,7 +63,18 @@ public class AuthService {
 
     @Transactional(noRollbackFor = AuthenticationException.class)
     public LoginResponse login(LoginRequest request) {
-        var optionalUser = userRepository.findByEmailWithRoles(request.email());
+        var tenant = tenantRepository.findBySlug(request.tenantSlug())
+                .orElseThrow(() -> {
+                    passwordEncoder.matches(request.password(), DUMMY_PASSWORD_HASH);
+                    return new AuthenticationException("ATLAS-AUTH-001", "Invalid credentials");
+                });
+
+        if (tenant.getStatus() == Tenant.Status.SUSPENDED) {
+            passwordEncoder.matches(request.password(), DUMMY_PASSWORD_HASH);
+            throw new AuthenticationException("ATLAS-AUTH-006", "Tenant is suspended");
+        }
+
+        var optionalUser = userRepository.findByTenantIdAndEmailWithRoles(tenant.getTenantId(), request.email());
 
         if (optionalUser.isEmpty()) {
             // Perform a dummy password check to prevent timing side-channel
@@ -67,6 +83,10 @@ public class AuthService {
         }
 
         User user = optionalUser.get();
+
+        if (user.getStatus() == User.Status.DISABLED) {
+            throw new AuthenticationException("ATLAS-AUTH-007", "Account is disabled");
+        }
 
         if (user.isLocked()) {
             throw new AuthenticationException("ATLAS-AUTH-002", "Account is locked. Try again later.");
@@ -91,6 +111,8 @@ public class AuthService {
                 .orElseThrow(() -> new AuthenticationException("ATLAS-AUTH-001", "Invalid refresh token"));
 
         if (storedToken.isRevoked()) {
+            // Revoke all tokens for this user to prevent reuse of stolen token families
+            refreshTokenRepository.revokeAllByUserId(storedToken.getUserId());
             throw new AuthenticationException("ATLAS-AUTH-005", "Refresh token has been revoked");
         }
 

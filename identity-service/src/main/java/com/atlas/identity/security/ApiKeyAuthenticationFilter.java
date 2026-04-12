@@ -17,10 +17,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
@@ -30,7 +31,14 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private final ApiKeyRepository apiKeyRepository;
     private final TenantContext tenantContext;
-    private final Map<String, CachedApiKey> apiKeyCache = new ConcurrentHashMap<>();
+    private static final int MAX_CACHE_SIZE = 10_000;
+    private final Map<String, CachedApiKey> apiKeyCache = Collections.synchronizedMap(
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, CachedApiKey> eldest) {
+                    return size() > MAX_CACHE_SIZE;
+                }
+            });
 
     public ApiKeyAuthenticationFilter(ApiKeyRepository apiKeyRepository, TenantContext tenantContext) {
         this.apiKeyRepository = apiKeyRepository;
@@ -69,7 +77,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         tenantContext.setTenantId(key.getTenantId());
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            SecurityContextHolder.clearContext();
+            tenantContext.setTenantId(null);
+        }
     }
 
     private Optional<ApiKey> lookupWithCache(String keyHash) {

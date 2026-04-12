@@ -6,6 +6,8 @@ spring:
     enabled: true
 
 atlas:
+  internal:
+    api-key: test-internal-key
   jwt:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256
   identity-service:

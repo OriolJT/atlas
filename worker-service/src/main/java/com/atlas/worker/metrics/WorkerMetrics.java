@@ -6,6 +6,8 @@ import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Central registry of business metrics for the worker service.
@@ -25,6 +27,7 @@ public class WorkerMetrics {
     private final MeterRegistry registry;
     private final Counter leaseAcquiredCounter;
     private final Counter leaseConflictCounter;
+    private final Set<String> knownStepTypes = ConcurrentHashMap.newKeySet();
 
     public WorkerMetrics(MeterRegistry registry) {
         this.registry = registry;
@@ -39,12 +42,23 @@ public class WorkerMetrics {
     }
 
     /**
+     * Registers a known step type so that unknown types can be sanitized in metrics tags.
+     */
+    public void registerKnownStepType(String stepType) {
+        knownStepTypes.add(stepType);
+    }
+
+    private String sanitizeStepType(String stepType) {
+        return knownStepTypes.contains(stepType) ? stepType : "UNKNOWN";
+    }
+
+    /**
      * Records the execution duration of a step, tagged with the step type.
      */
     public void recordStepDuration(String stepType, Duration duration) {
         Timer.builder("atlas.worker.step.duration")
                 .description("Execution duration of worker steps")
-                .tag("step_type", stepType)
+                .tag("step_type", sanitizeStepType(stepType))
                 .register(registry)
                 .record(duration);
     }
@@ -55,7 +69,7 @@ public class WorkerMetrics {
     public void recordStepSuccess(String stepType) {
         Counter.builder("atlas.worker.step.success")
                 .description("Number of successfully completed worker steps")
-                .tag("step_type", stepType)
+                .tag("step_type", sanitizeStepType(stepType))
                 .register(registry)
                 .increment();
     }
@@ -66,7 +80,7 @@ public class WorkerMetrics {
     public void recordStepFailure(String stepType) {
         Counter.builder("atlas.worker.step.failure")
                 .description("Number of failed worker step executions")
-                .tag("step_type", stepType)
+                .tag("step_type", sanitizeStepType(stepType))
                 .register(registry)
                 .increment();
     }

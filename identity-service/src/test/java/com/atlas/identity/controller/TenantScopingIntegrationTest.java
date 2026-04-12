@@ -74,7 +74,7 @@ class TenantScopingIntegrationTest {
         assertThat(userB).isNotNull();
 
         // Login as tenant A's user
-        var loginRequest = new LoginRequest(emailA, "SecurePass1");
+        var loginRequest = new LoginRequest("tenant-a-" + uniqueA, emailA, "SecurePass1");
         ResponseEntity<LoginResponse> loginResponse = restTemplate.postForEntity("/api/v1/auth/login", loginRequest, LoginResponse.class);
         assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         String accessToken = loginResponse.getBody().accessToken();
@@ -105,7 +105,7 @@ class TenantScopingIntegrationTest {
         assertThat(createdUser).isNotNull();
 
         // Login as that user
-        var loginRequest = new LoginRequest(email, "SecurePass1");
+        var loginRequest = new LoginRequest("tenant-own-" + unique, email, "SecurePass1");
         ResponseEntity<LoginResponse> loginResponse = restTemplate.postForEntity("/api/v1/auth/login", loginRequest, LoginResponse.class);
         assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         String accessToken = loginResponse.getBody().accessToken();

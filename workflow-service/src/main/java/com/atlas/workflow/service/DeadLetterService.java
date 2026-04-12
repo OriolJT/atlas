@@ -1,14 +1,16 @@
 package com.atlas.workflow.service;
 
 import com.atlas.workflow.domain.DeadLetterItem;
+import com.atlas.workflow.domain.ExecutionStatus;
 import com.atlas.workflow.domain.OutboxEvent;
 import com.atlas.workflow.domain.StepExecution;
-import com.atlas.workflow.domain.StepStatus;
+import com.atlas.workflow.domain.WorkflowExecution;
 import com.atlas.workflow.exception.ConflictException;
 import com.atlas.workflow.exception.ResourceNotFoundException;
 import com.atlas.workflow.repository.DeadLetterItemRepository;
 import com.atlas.workflow.repository.OutboxRepository;
 import com.atlas.workflow.repository.StepExecutionRepository;
+import com.atlas.workflow.repository.WorkflowExecutionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,13 +31,16 @@ public class DeadLetterService {
     private final DeadLetterItemRepository deadLetterItemRepository;
     private final StepExecutionRepository stepExecutionRepository;
     private final OutboxRepository outboxRepository;
+    private final WorkflowExecutionRepository executionRepository;
 
     public DeadLetterService(DeadLetterItemRepository deadLetterItemRepository,
                              StepExecutionRepository stepExecutionRepository,
-                             OutboxRepository outboxRepository) {
+                             OutboxRepository outboxRepository,
+                             WorkflowExecutionRepository executionRepository) {
         this.deadLetterItemRepository = deadLetterItemRepository;
         this.stepExecutionRepository = stepExecutionRepository;
         this.outboxRepository = outboxRepository;
+        this.executionRepository = executionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -64,8 +69,17 @@ public class DeadLetterService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Step execution not found: " + item.getStepExecutionId()));
 
-        step.transitionTo(StepStatus.PENDING);
+        step.resetForReplay();
         stepExecutionRepository.save(step);
+
+        // Transition the execution back to RUNNING so the replayed step can proceed
+        WorkflowExecution execution = executionRepository.findById(step.getExecutionId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Workflow execution not found: " + step.getExecutionId()));
+        if (execution.getStatus() == ExecutionStatus.FAILED) {
+            execution.transitionTo(ExecutionStatus.RUNNING);
+            executionRepository.save(execution);
+        }
 
         // Publish outbox event to re-execute the step
         Map<String, Object> payload = Map.of(

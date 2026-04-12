@@ -47,16 +47,13 @@ public class DelayScheduler {
     private final StringRedisTemplate redisTemplate;
     private final StepExecutionRepository stepExecutionRepository;
     private final OutboxRepository outboxRepository;
-    private final StepStateMachine stepStateMachine;
 
     public DelayScheduler(StringRedisTemplate redisTemplate,
                           StepExecutionRepository stepExecutionRepository,
-                          OutboxRepository outboxRepository,
-                          StepStateMachine stepStateMachine) {
+                          OutboxRepository outboxRepository) {
         this.redisTemplate = redisTemplate;
         this.stepExecutionRepository = stepExecutionRepository;
         this.outboxRepository = outboxRepository;
-        this.stepStateMachine = stepStateMachine;
 
         this.claimScript = new DefaultRedisScript<>();
         this.claimScript.setScriptText(CLAIM_LUA_SCRIPT);
@@ -98,7 +95,7 @@ public class DelayScheduler {
             return;
         }
 
-        stepStateMachine.validate(step.getStatus(), StepStatus.PENDING);
+        StepStateMachine.validate(step.getStatus(), StepStatus.PENDING);
         step.transitionTo(StepStatus.PENDING);
         stepExecutionRepository.save(step);
 

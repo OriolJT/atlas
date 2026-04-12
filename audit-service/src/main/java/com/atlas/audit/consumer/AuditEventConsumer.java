@@ -30,9 +30,16 @@ public class AuditEventConsumer {
     }
 
     @KafkaListener(topics = EventTypes.TOPIC_AUDIT_EVENTS, groupId = "audit-service")
-    @Transactional
+    @Transactional(noRollbackFor = DataIntegrityViolationException.class)
     public void onAuditEvent(Map<String, Object> payload) {
-        AuditEvent event = parseEvent(payload);
+        AuditEvent event;
+        try {
+            event = parseEvent(payload);
+        } catch (Exception e) {
+            log.error("Failed to parse audit event from Kafka payload, skipping poison pill message. Payload: {}. Error: {}",
+                    payload, e.getMessage(), e);
+            return;
+        }
         log.debug("Received audit event: auditEventId={} eventType={} tenantId={}",
                 event.getAuditEventId(), event.getEventType(), event.getTenantId());
         try {
@@ -41,6 +48,9 @@ public class AuditEventConsumer {
                     event.getAuditEventId(), event.getEventType(), event.getTenantId());
         } catch (DataIntegrityViolationException e) {
             log.debug("Duplicate audit event ignored: auditEventId={}", event.getAuditEventId());
+        } catch (Exception e) {
+            log.error("Failed to save audit event: auditEventId={}, skipping. Error: {}",
+                    event.getAuditEventId(), e.getMessage(), e);
         }
     }
 
@@ -49,10 +59,10 @@ public class AuditEventConsumer {
         UUID auditEventId = parseUuid(payload.getOrDefault("audit_event_id",
                 payload.get("event_id")));
         UUID tenantId = parseUuid(payload.get("tenant_id"));
-        String actorType = (String) payload.get("actor_type");
+        String actorType = payload.get("actor_type") != null ? (String) payload.get("actor_type") : "SYSTEM";
         UUID actorId = parseUuidOrNull(payload.get("actor_id"));
         String eventType = (String) payload.get("event_type");
-        String resourceType = (String) payload.get("resource_type");
+        String resourceType = payload.get("resource_type") != null ? (String) payload.get("resource_type") : "UNKNOWN";
         UUID resourceId = parseUuidOrNull(payload.get("resource_id"));
         Map<String, Object> eventPayload = (Map<String, Object>) payload.getOrDefault("payload", Map.of());
         UUID correlationId = parseUuidOrNull(payload.get("correlation_id"));

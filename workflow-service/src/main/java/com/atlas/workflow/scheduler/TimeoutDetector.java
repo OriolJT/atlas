@@ -7,6 +7,8 @@ import com.atlas.workflow.service.StepResultProcessor;
 import com.atlas.workflow.statemachine.StepStateMachine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,23 +21,21 @@ import java.util.Map;
 public class TimeoutDetector {
 
     private static final Logger log = LoggerFactory.getLogger(TimeoutDetector.class);
+    private static final int BATCH_SIZE = 100;
 
     private final StepExecutionRepository stepExecutionRepository;
-    private final StepStateMachine stepStateMachine;
     private final StepResultProcessor stepResultProcessor;
 
     public TimeoutDetector(StepExecutionRepository stepExecutionRepository,
-                           StepStateMachine stepStateMachine,
                            StepResultProcessor stepResultProcessor) {
         this.stepExecutionRepository = stepExecutionRepository;
-        this.stepStateMachine = stepStateMachine;
         this.stepResultProcessor = stepResultProcessor;
     }
 
     @Scheduled(fixedDelay = 10000)
     @Transactional
     public void detectTimedOutSteps() {
-        List<StepExecution> candidates = stepExecutionRepository.findRunningOrLeased();
+        List<StepExecution> candidates = stepExecutionRepository.findRunningOrLeased(PageRequest.of(0, BATCH_SIZE));
         if (candidates.isEmpty()) {
             return;
         }
@@ -78,7 +78,7 @@ public class TimeoutDetector {
         // This reuses the retry/compensation/dead-letter logic already in StepResultProcessor.
         // First transition through RUNNING if currently LEASED so the state machine is satisfied.
         if (step.getStatus() == StepStatus.LEASED) {
-            stepStateMachine.validate(StepStatus.LEASED, StepStatus.RUNNING);
+            StepStateMachine.validate(StepStatus.LEASED, StepStatus.RUNNING);
             step.transitionTo(StepStatus.RUNNING);
             stepExecutionRepository.save(step);
         }
@@ -91,6 +91,10 @@ public class TimeoutDetector {
                 "error", "Step timed out after " + step.getTimeoutMs() + "ms"
         );
 
-        stepResultProcessor.process(failedResult);
+        try {
+            stepResultProcessor.process(failedResult);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            log.debug("Step {} already processed, skipping", step.getStepExecutionId());
+        }
     }
 }

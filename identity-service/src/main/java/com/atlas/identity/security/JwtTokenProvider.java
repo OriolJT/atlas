@@ -41,6 +41,8 @@ public class JwtTokenProvider {
         Instant expiry = now.plus(accessTokenExpiryMinutes, ChronoUnit.MINUTES);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .issuer("atlas-identity-service")
                 .subject(userId.toString())
                 .claim("tenant_id", tenantId.toString())
                 .claim("roles", roles)
@@ -82,6 +84,7 @@ public class JwtTokenProvider {
     public Claims parseAccessToken(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)
+                .requireIssuer("atlas-identity-service")
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

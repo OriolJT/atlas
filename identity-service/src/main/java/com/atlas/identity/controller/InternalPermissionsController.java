@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.UUID;
 
 /**
@@ -45,10 +47,16 @@ public class InternalPermissionsController {
     public ResponseEntity<PermissionMappingResponse> getPermissionMappings(
             @RequestParam UUID tenantId,
             @RequestHeader(value = "X-Internal-Api-Key", required = false) String apiKey) {
-        if (apiKey == null || !apiKey.equals(internalApiKey)) {
+        if (apiKey == null || !constantTimeEquals(apiKey, internalApiKey)) {
             return ResponseEntity.status(403).build();
         }
         var response = roleService.getAllPermissionMappings(tenantId);
         return ResponseEntity.ok(response);
+    }
+
+    private static boolean constantTimeEquals(String a, String b) {
+        return MessageDigest.isEqual(
+                a.getBytes(StandardCharsets.UTF_8),
+                b.getBytes(StandardCharsets.UTF_8));
     }
 }

@@ -18,15 +18,13 @@ public final class ExecutionStateMachine {
 
         ALLOWED_TRANSITIONS.put(ExecutionStatus.RUNNING,
                 EnumSet.of(ExecutionStatus.WAITING, ExecutionStatus.COMPLETED,
-                           ExecutionStatus.FAILED,  ExecutionStatus.CANCELED,
-                           ExecutionStatus.TIMED_OUT));
+                           ExecutionStatus.FAILED,  ExecutionStatus.CANCELED));
 
         ALLOWED_TRANSITIONS.put(ExecutionStatus.WAITING,
-                EnumSet.of(ExecutionStatus.RUNNING, ExecutionStatus.CANCELED,
-                           ExecutionStatus.TIMED_OUT));
+                EnumSet.of(ExecutionStatus.RUNNING, ExecutionStatus.CANCELED));
 
         ALLOWED_TRANSITIONS.put(ExecutionStatus.FAILED,
-                EnumSet.of(ExecutionStatus.COMPENSATING));
+                EnumSet.of(ExecutionStatus.COMPENSATING, ExecutionStatus.RUNNING));
 
         ALLOWED_TRANSITIONS.put(ExecutionStatus.COMPENSATING,
                 EnumSet.of(ExecutionStatus.COMPENSATED, ExecutionStatus.COMPENSATION_FAILED));
@@ -36,7 +34,6 @@ public final class ExecutionStateMachine {
         ALLOWED_TRANSITIONS.put(ExecutionStatus.COMPENSATED,        EnumSet.noneOf(ExecutionStatus.class));
         ALLOWED_TRANSITIONS.put(ExecutionStatus.COMPENSATION_FAILED, EnumSet.noneOf(ExecutionStatus.class));
         ALLOWED_TRANSITIONS.put(ExecutionStatus.CANCELED,           EnumSet.noneOf(ExecutionStatus.class));
-        ALLOWED_TRANSITIONS.put(ExecutionStatus.TIMED_OUT,          EnumSet.noneOf(ExecutionStatus.class));
     }
 
     private ExecutionStateMachine() {

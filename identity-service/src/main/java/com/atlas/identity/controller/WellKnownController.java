@@ -23,7 +23,6 @@ public class WellKnownController {
             "issuer", baseUrl,
             "authorization_endpoint", baseUrl + "/api/v1/auth/login",
             "token_endpoint", baseUrl + "/api/v1/auth/login",
-            "jwks_uri", baseUrl + "/.well-known/jwks.json",
             "response_types_supported", List.of("code"),
             "subject_types_supported", List.of("public"),
             "id_token_signing_alg_values_supported", List.of("HS256")

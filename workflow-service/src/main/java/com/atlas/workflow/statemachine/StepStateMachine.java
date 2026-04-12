@@ -1,12 +1,10 @@
 package com.atlas.workflow.statemachine;
 
 import com.atlas.workflow.domain.StepStatus;
-import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Set;
 
-@Component
 public final class StepStateMachine {
 
     private static final Map<StepStatus, Set<StepStatus>> ALLOWED_TRANSITIONS = Map.ofEntries(

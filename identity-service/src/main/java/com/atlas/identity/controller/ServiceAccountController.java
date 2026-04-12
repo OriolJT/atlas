@@ -54,7 +54,7 @@ public class ServiceAccountController {
     @PostMapping("/api-keys")
     public ResponseEntity<ApiKeyResponse> generateApiKey(
             @Valid @RequestBody CreateApiKeyRequest request) {
-        ApiKeyResponse response = serviceAccountService.generateApiKey(request);
+        ApiKeyResponse response = serviceAccountService.generateApiKey(request, tenantContext.getTenantId());
         URI location = URI.create("/api/v1/api-keys/" + response.apiKeyId());
         return ResponseEntity.created(location).body(response);
     }

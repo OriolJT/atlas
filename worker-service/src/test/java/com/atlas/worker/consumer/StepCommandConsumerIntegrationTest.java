@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaAdmin;
@@ -48,7 +49,10 @@ class StepCommandConsumerIntegrationTest {
     @BeforeEach
     void setUp() {
         resultCapture.clear();
-        redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
+        redisTemplate.execute((RedisCallback<Void>) connection -> {
+            connection.serverCommands().flushAll();
+            return null;
+        });
 
         // Ensure topics exist
         try (AdminClient admin = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {

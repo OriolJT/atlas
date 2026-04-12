@@ -18,8 +18,8 @@ public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
     @Query("SELECT o FROM OutboxEvent o WHERE o.publishedAt IS NULL ORDER BY o.createdAt")
     List<OutboxEvent> findUnpublished();
 
-    @Query("SELECT o FROM OutboxEvent o WHERE o.publishedAt IS NULL ORDER BY o.createdAt")
-    List<OutboxEvent> findUnpublishedBatch(Pageable pageable);
+    @Query(value = "SELECT * FROM outbox WHERE published_at IS NULL ORDER BY created_at ASC LIMIT :limit FOR UPDATE SKIP LOCKED", nativeQuery = true)
+    List<OutboxEvent> findUnpublishedBatchForUpdate(@Param("limit") int limit);
 
     @Modifying
     @Query("DELETE FROM OutboxEvent o WHERE o.publishedAt IS NOT NULL AND o.publishedAt < :cutoff")

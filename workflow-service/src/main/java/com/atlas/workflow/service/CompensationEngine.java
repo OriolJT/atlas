@@ -10,7 +10,6 @@ import com.atlas.workflow.repository.OutboxRepository;
 import com.atlas.workflow.repository.StepExecutionRepository;
 import com.atlas.workflow.repository.WorkflowDefinitionRepository;
 import com.atlas.workflow.repository.WorkflowExecutionRepository;
-import com.atlas.workflow.statemachine.StepStateMachine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,18 +32,15 @@ public class CompensationEngine {
     private final WorkflowDefinitionRepository definitionRepository;
     private final StepExecutionRepository stepExecutionRepository;
     private final OutboxRepository outboxRepository;
-    private final StepStateMachine stepStateMachine;
 
     public CompensationEngine(WorkflowExecutionRepository executionRepository,
                               WorkflowDefinitionRepository definitionRepository,
                               StepExecutionRepository stepExecutionRepository,
-                              OutboxRepository outboxRepository,
-                              StepStateMachine stepStateMachine) {
+                              OutboxRepository outboxRepository) {
         this.executionRepository = executionRepository;
         this.definitionRepository = definitionRepository;
         this.stepExecutionRepository = stepExecutionRepository;
         this.outboxRepository = outboxRepository;
-        this.stepStateMachine = stepStateMachine;
     }
 
     @Transactional
@@ -161,17 +157,29 @@ public class CompensationEngine {
                 dispatchNextPendingCompensationStep(execution);
             }
         } else {
-            // Compensation step failed -> COMPENSATION_FAILED -> DEAD_LETTERED
+            // Compensation step failed — log and continue with remaining compensation steps
             compensationStep.setErrorMessage(error);
             compensationStep.transitionTo(StepStatus.COMPENSATION_FAILED);
             compensationStep.transitionTo(StepStatus.DEAD_LETTERED);
             stepExecutionRepository.save(compensationStep);
 
-            log.error("Compensation step {} failed for execution {}: {}",
+            log.error("Compensation step {} failed for execution {}: {}. Continuing with remaining compensation steps.",
                     compensationStep.getStepExecutionId(), execution.getExecutionId(), error);
 
-            execution.transitionTo(ExecutionStatus.COMPENSATION_FAILED);
-            executionRepository.save(execution);
+            // Check if all compensation steps are done (succeeded or failed)
+            if (allCompensationStepsDone(execution)) {
+                if (anyCompensationStepFailed(execution)) {
+                    log.warn("All compensation steps attempted for execution {}, but some failed",
+                            execution.getExecutionId());
+                    execution.transitionTo(ExecutionStatus.COMPENSATION_FAILED);
+                } else {
+                    execution.transitionTo(ExecutionStatus.COMPENSATED);
+                }
+                executionRepository.save(execution);
+            } else {
+                // Dispatch the next PENDING compensation step
+                dispatchNextPendingCompensationStep(execution);
+            }
         }
     }
 
@@ -215,6 +223,15 @@ public class CompensationEngine {
                 .toList();
 
         return compensationSteps.stream()
-                .allMatch(s -> s.getStatus() == StepStatus.SUCCEEDED);
+                .allMatch(s -> s.getStatus() == StepStatus.SUCCEEDED
+                        || s.getStatus() == StepStatus.DEAD_LETTERED);
+    }
+
+    private boolean anyCompensationStepFailed(WorkflowExecution execution) {
+        return stepExecutionRepository
+                .findByExecutionIdOrderByStepIndex(execution.getExecutionId())
+                .stream()
+                .filter(StepExecution::isCompensation)
+                .anyMatch(s -> s.getStatus() == StepStatus.DEAD_LETTERED);
     }
 }

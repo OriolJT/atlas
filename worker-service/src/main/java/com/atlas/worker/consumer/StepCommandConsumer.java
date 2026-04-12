@@ -14,11 +14,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import java.net.InetAddress;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Kafka consumer that receives step execution commands, acquires a Redis lease to prevent
@@ -37,21 +43,30 @@ public class StepCommandConsumer {
     private final InFlightTracker inFlightTracker;
     private final WorkerMetrics metrics;
     private final String workerId;
+    private final ScheduledExecutorService leaseRenewalScheduler;
 
     public StepCommandConsumer(LeaseManager leaseManager,
                                StepExecutorRegistry executorRegistry,
                                StepResultPublisher resultPublisher,
                                InFlightTracker inFlightTracker,
-                               WorkerMetrics metrics) {
+                               WorkerMetrics metrics,
+                               @Value("${atlas.worker.concurrency:4}") int concurrency) {
         this.leaseManager = leaseManager;
         this.executorRegistry = executorRegistry;
         this.resultPublisher = resultPublisher;
         this.inFlightTracker = inFlightTracker;
         this.metrics = metrics;
         this.workerId = resolveWorkerId();
+        executorRegistry.getKnownStepTypes().forEach(metrics::registerKnownStepType);
+        this.leaseRenewalScheduler = Executors.newScheduledThreadPool(concurrency, r -> {
+            Thread t = new Thread(r, "lease-renewal");
+            t.setDaemon(true);
+            return t;
+        });
     }
 
-    @KafkaListener(topics = EventTypes.TOPIC_STEP_EXECUTE, groupId = "worker-service")
+    @KafkaListener(topics = EventTypes.TOPIC_STEP_EXECUTE, groupId = "worker-service",
+            concurrency = "${atlas.worker.concurrency:4}")
     public void onStepCommand(Map<String, Object> payload) {
         StepCommand command;
         try {
@@ -83,11 +98,33 @@ public class StepCommandConsumer {
 
         metrics.recordLeaseAcquired();
         inFlightTracker.startTracking(command.stepExecutionId());
+
+        // Schedule recurring lease renewal at TTL/3 intervals
+        long renewalIntervalSeconds = Math.max(leaseTimeoutSeconds / 3, 1);
+        ScheduledFuture<?> leaseRenewalFuture = leaseRenewalScheduler.scheduleAtFixedRate(
+                () -> {
+                    try {
+                        boolean extended = leaseManager.extendLease(
+                                command.stepExecutionId(), workerId, leaseTimeoutSeconds);
+                        if (!extended) {
+                            log.warn("Failed to extend lease for stepExecutionId={}", command.stepExecutionId());
+                        }
+                    } catch (Exception ex) {
+                        log.warn("Lease renewal error for stepExecutionId={}", command.stepExecutionId(), ex);
+                    }
+                },
+                renewalIntervalSeconds,
+                renewalIntervalSeconds,
+                TimeUnit.SECONDS
+        );
+
+        boolean resultPublished = false;
         Instant start = Instant.now();
         try {
             StepExecutor executor = executorRegistry.getExecutor(command.stepType());
             StepResult result = executor.execute(command);
             resultPublisher.publish(result, command.tenantId());
+            resultPublished = true;
 
             Duration duration = Duration.between(start, Instant.now());
             metrics.recordStepSuccess(command.stepType());
@@ -105,10 +142,24 @@ public class StepCommandConsumer {
                     e.getMessage(),
                     false
             );
-            resultPublisher.publish(failedResult, command.tenantId());
+            try {
+                resultPublisher.publish(failedResult, command.tenantId());
+                resultPublished = true;
+            } catch (Exception publishEx) {
+                log.error("Failed to publish failure result: stepExecutionId={} executionId={} tenantId={} attempt={} originalError={}",
+                        command.stepExecutionId(), command.executionId(), command.tenantId(),
+                        command.attempt(), e.getMessage(), publishEx);
+            }
         } finally {
+            leaseRenewalFuture.cancel(false);
             inFlightTracker.stopTracking(command.stepExecutionId());
-            leaseManager.releaseLease(command.stepExecutionId(), workerId);
+            if (resultPublished) {
+                leaseManager.releaseLease(command.stepExecutionId(), workerId);
+            } else {
+                log.warn("Lease NOT released for stepExecutionId={} because result was not published — "
+                        + "lease will expire naturally, allowing retry",
+                        command.stepExecutionId());
+            }
         }
     }
 
@@ -150,7 +201,11 @@ public class StepCommandConsumer {
 
     private static String resolveWorkerId() {
         try {
-            return InetAddress.getLocalHost().getHostName() + "-" + UUID.randomUUID();
+            String hostname = System.getenv("HOSTNAME");
+            if (hostname == null || hostname.isBlank()) {
+                hostname = InetAddress.getLocalHost().getHostName();
+            }
+            return hostname + "-" + UUID.randomUUID();
         } catch (Exception e) {
             return "worker-" + UUID.randomUUID();
         }

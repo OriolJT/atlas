@@ -35,7 +35,7 @@ All Atlas services share a common set of infrastructure variables. Service-speci
 |---|---|---|
 | `ATLAS_WORKFLOW_PORT` | `8082` | HTTP listen port |
 | `ATLAS_GRPC_SERVER_ENABLED` | `false` | Enable gRPC result transport endpoint |
-| `ATLAS_GRPC_SERVER_PORT` | `9090` | gRPC listen port (if enabled) |
+| `ATLAS_GRPC_SERVER_PORT` | `9095` | gRPC listen port (if enabled) |
 
 ### Worker Service
 
@@ -46,7 +46,7 @@ All Atlas services share a common set of infrastructure variables. Service-speci
 | `ATLAS_WORKER_DRAIN_TIMEOUT_S` | `30` | Seconds to wait for in-flight steps on graceful shutdown |
 | `ATLAS_WORKER_RESULT_TRANSPORT` | `kafka` | `kafka` or `grpc` — transport for step results |
 | `ATLAS_GRPC_WORKFLOW_HOST` | `localhost` | Workflow Service gRPC host (if using gRPC transport) |
-| `ATLAS_GRPC_WORKFLOW_PORT` | `9090` | Workflow Service gRPC port (if using gRPC transport) |
+| `ATLAS_GRPC_WORKFLOW_PORT` | `9095` | Workflow Service gRPC port (if using gRPC transport) |
 
 ### Audit Service
 

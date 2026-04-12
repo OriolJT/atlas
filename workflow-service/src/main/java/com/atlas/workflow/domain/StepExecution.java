@@ -157,6 +157,19 @@ public class StepExecution {
         }
     }
 
+    /**
+     * Resets state for a dead-letter replay: transitions to PENDING and zeroes
+     * the attempt counter so the step gets a fresh set of retries.
+     */
+    public void resetForReplay() {
+        transitionTo(StepStatus.PENDING);
+        this.attemptCount = 0;
+        this.startedAt = null;
+        this.completedAt = null;
+        this.errorMessage = null;
+        this.nextRetryAt = null;
+    }
+
     public void lease(String workerId) {
         this.leasedAt = Instant.now();
         this.leasedBy = workerId;

@@ -57,7 +57,7 @@ public class RoleController {
     public ResponseEntity<RoleResponse> assignPermissions(
             @PathVariable UUID id,
             @Valid @RequestBody AssignPermissionsRequest request) {
-        var role = roleService.assignPermissions(id, request);
+        var role = roleService.assignPermissions(id, tenantContext.getTenantId(), request);
         var response = RoleResponse.from(role);
         return ResponseEntity.ok(response);
     }

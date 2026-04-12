@@ -8,6 +8,14 @@ atlas:
   jwt:
     secret: atlas-jwt-secret-key-that-is-at-least-256-bits-long-for-hs256
 
+management:
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+
 logging:
   level:
     com.atlas.identity: DEBUG

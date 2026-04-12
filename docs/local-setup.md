@@ -45,6 +45,8 @@ atlas/
 ├── workflow-service/         # Port 8082
 ├── worker-service/           # Port 8083
 ├── audit-service/            # Port 8084
+├── admin-console/            # React/Vite admin UI (port 3001)
+├── proto/                    # Protobuf definitions for gRPC
 ├── infra/
 │   ├── docker-compose.yml
 │   ├── grafana/              # Provisioned dashboards
@@ -227,6 +229,8 @@ Key configuration properties (with defaults for local profile):
 | Workflow Service | 8082 |
 | Worker Service | 8083 |
 | Audit Service | 8084 |
+| Admin Console | 3001 |
+| Workflow Service gRPC | 9095 (optional, when `ATLAS_GRPC_SERVER_ENABLED=true`) |
 | PostgreSQL | 5432 |
 | Kafka | 9092 |
 | Redis | 6379 |
